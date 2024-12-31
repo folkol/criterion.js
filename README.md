@@ -7,7 +7,7 @@ Criterion.js is a micro-benchmarking tool inspired by [Criterion.rs](https://cra
 For each of your bench tests, it does something like this:
 
 1. runs your function in a loop get the system up-to-speed (JIT compilation, system caches, CPU throttling, etc.)
-2. runs your code a few times more in order to take measurements
+2. runs your code a few times more in order to take measurements (awaiting the result of the function under test is 'thenable'
 3. calculates some statistics for these measurements
 4. generates a report
 
@@ -17,11 +17,15 @@ Micro-benchmarking is what it is, if your production code isn't executed in a ti
 
 ## How do I get it?
 
+WIP: Not published yet!
+
 ```
 $ npm install (--save-dev) @folkol/criterions
 ```
 
 ## How do I use it?
+
+WIP: Not published yet!
 
 ```
 import bench from '@folkol/criterion'
@@ -38,12 +42,6 @@ bench('My Function', f)
 
 ## How do I run it?
 
-What about runner?
-
 ```
-$ node path/to/my/benchmark.js
-```
-
-```
-$ npx criterion  # will find test under ./benches and run all of them
+$ node path/to/my/benchmark.mjs
 ```
