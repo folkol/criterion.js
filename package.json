@@ -1,0 +1,25 @@
+{
+  "name": "criterion-js",
+  "version": "0.0.1",
+  "description": "Micro-benchmarking tool inspired by Criterion.rs",
+  "main": "index.mjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "criterion-report": "./cli.js"
+  },
+  "type": "module",
+  "keywords": [
+    "benchmark",
+    "performance",
+    "testing"
+  ],
+  "author": "folkol",
+  "license": "ISC",
+  "dependencies": {
+    "benchmark": "^2.1.4",
+    "handlebars": "^4.7.8",
+    "tsx": "^4.19.2"
+  }
+}
