@@ -30,7 +30,7 @@ $ npm install (--save-dev) @folkol/criterion
 1. Create a Criterion instance
 2. Create a benchmark group
 3. Bench a number of functions
-4. Generate the report
+4. [optionally] Generate the report
 
 ```
 import {Criterion} from '@folkol/criterion';
@@ -42,7 +42,7 @@ let criterion = new Criterion({
 //    warmUpTime: 0.1,
 });
 
-let group = criterion.benchmarkGroup("f vs g");
+let group = criterion.group("f vs g");
 
 group.bench("f", f);
 group.bench("g", g);
