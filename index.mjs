@@ -20,7 +20,7 @@ class Bencher {
 
     assertIterated() {
         if (!this.iterated) {
-            console.error('Benchmark function must call Bencher::iter or related method.')
+            console.error('Benchmark function must call Bencher.iter.')
         }
         this.iterated = false;
     }
@@ -174,12 +174,41 @@ class Function {
     }
 }
 
+/**
+ * Class representing a group of related benchmarks.
+ * Benchmarks within a group share a common name and are managed together.
+ */
 class BenchmarkGroup {
+    /**
+     * The Criterion instance managing this benchmark group.
+     * @type {Criterion}
+     */
+    criterion;
+
+    /**
+     * The name of the benchmark group.
+     * @type {string}
+     */
+    name;
+
+    /**
+     * Creates an instance of BenchmarkGroup.
+     * @param {Criterion} criterion - The Criterion instance managing the benchmark group.
+     * @param {string} name - The name of the benchmark group.
+     */
     constructor(criterion, name) {
         this.criterion = criterion;
         this.name = name;
     }
 
+    /**
+     * Runs a single benchmark within the group.
+     * Performs analysis and reporting based on the provided function and input.
+     * @param {Object} id - The unique identifier for the benchmark.
+     * @param {Function} input - A function to generate inputs for the benchmark.
+     * @param {Function} f - The benchmark function to be executed.
+     * @returns {Promise<void>} Resolves when the benchmark is complete.
+     */
     async runBench(id, input, f) {
         let config = this.criterion.config;
         let reportContext = {
@@ -192,9 +221,23 @@ class BenchmarkGroup {
         );
         let func = new Function(f);
 
-        await Analysis.common(internalId, func, config, this.criterion, reportContext, input)
+        await Analysis.common(
+            internalId,
+            func,
+            config,
+            this.criterion,
+            reportContext,
+            input
+        );
     }
 
+    /**
+     * Adds a new benchmark to the group and schedules it for execution.
+     * The benchmark is defined by its name and function, and additional parameters can be passed.
+     * @param {string} name - The name of the benchmark.
+     * @param {Function} f - The function to be benchmarked.
+     * @param {...any} rest - Additional parameters for the benchmark function.
+     */
     bench(name, f, ...rest) {
         let task = async () => this.runBench(
             new GroupBenchmarkId(name),
@@ -997,21 +1040,64 @@ class HtmlReport extends Report {
     }
 }
 
+/**
+ * Configuration class for benchmarking settings in Criterion.
+ * Allows customization of key parameters such as confidence level, measurement time, and sampling.
+ */
 class CriterionConfig {
+    /**
+     * The confidence level used in statistical calculations.
+     * Represents the probability that the true parameter is within the confidence interval.
+     * @type {number}
+     * @default 0.95
+     */
     confidenceLevel = 0.95;
-    measurementTime = 5;
-    noiseThreshold = 0.01;
-    nResamples = 100_000;
-    sampleSize = 100;
-    significanceLevel = 0.05;
-    warmUpTime = 3;
-    samplingMode = 'auto';
-    quickMode = false;
 
+    /**
+     * The duration (in seconds) for which measurements are taken during benchmarking.
+     * @type {number}
+     * @default 5
+     */
+    measurementTime = 5;
+
+    /**
+     * The number of resamples performed during bootstrap analysis.
+     * Higher values increase precision but require more computation.
+     * @type {number}
+     * @default 100000
+     */
+    nResamples = 100_000;
+
+    /**
+     * The number of samples collected during each benchmark iteration.
+     * @type {number}
+     * @default 100
+     */
+    sampleSize = 100;
+
+    /**
+     * The warm-up time (in seconds) before actual measurements begin.
+     * Allows the system to stabilize for more accurate results.
+     * @type {number}
+     * @default 3
+     */
+    warmUpTime = 3;
+
+    /**
+     * Creates an instance of CriterionConfig.
+     * Merges the provided options with the default configuration.
+     * @param {Object} [opts] - An object containing custom configuration options.
+     * @param {number} [opts.confidenceLevel] - Custom confidence level.
+     * @param {number} [opts.measurementTime] - Custom measurement time in seconds.
+     * @param {number} [opts.nResamples] - Custom number of resamples.
+     * @param {number} [opts.sampleSize] - Custom sample size.
+     * @param {number} [opts.warmUpTime] - Custom warm-up time in seconds.
+     */
     constructor(opts) {
-        Object.assign(this, opts)
+        Object.assign(this, opts);
     }
 }
+
 
 export class Reporter extends Report {
     constructor(...reporters) {
@@ -1075,19 +1161,44 @@ class WallTime {
     }
 }
 
+/**
+ * The main API for Criterion.js
+ * Manages task execution and reporting for benchmarking tasks.
+ */
 export class Criterion {
     queue = [];
+
+    /**
+     * The maximum number of tasks that can run concurrently.
+     * @type {number}
+     * @default 1
+     */
     concurrency = 1;
+
     running = 0;
+
     report = new Reporter(new CliReport, new HtmlReport);
-    filter = null;
+
     outputDirectory = 'criterion';
+
     measurement = new WallTime;
 
-    constructor(config) {
-        this.config = Object.assign(new CriterionConfig, config);
+    config;
+
+    /**
+     * Creates an instance of Criterion.
+     * @param {Object} configuration - Configuration overrides
+     */
+    constructor(configuration) {
+        this.config = new CriterionConfig(configuration);
     }
 
+    /**
+     * Creates a new benchmark group with a specified name.
+     * Benchmark groups allow grouping of related benchmarks for organization.
+     * @param {string} name - The name of the benchmark group.
+     * @returns {BenchmarkGroup} A new BenchmarkGroup instance.
+     */
     benchmarkGroup(name) {
         return new BenchmarkGroup(this, name);
     }

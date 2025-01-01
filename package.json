@@ -4,7 +4,7 @@
   "description": "Micro-benchmarking tool inspired by Criterion.rs",
   "main": "index.mjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "types": "npx -p typescript tsc index.mjs --declaration --allowJs --emitDeclarationOnly"
   },
   "bin": {
     "criterion-report": "./generate-report.mjs"
@@ -19,5 +19,8 @@
   "license": "MIT",
   "dependencies": {
     "handlebars": "^4.7.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
   }
 }
