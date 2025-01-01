@@ -21,6 +21,10 @@ Micro-benchmarking is what it is, if your production code isn't executed in a ti
 $ npm install (--save-dev) @folkol/criterion
 ```
 
+### Gnuplot
+
+[Gnuplot](https://gnuplot.sourceforge.net) is needed for generating the HTML report.
+
 ## How do I use it?
 
 1. Create a Criterion instance

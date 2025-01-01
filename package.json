@@ -1,6 +1,6 @@
 {
   "name": "@folkol/criterion",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Micro-benchmarking tool inspired by Criterion.rs",
   "main": "index.mjs",
   "homepage": "https://github.com/folkol/criterion.js/blob/master/README.md",
