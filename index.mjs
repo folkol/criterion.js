@@ -1,5 +1,5 @@
 import * as Analysis from "./analysis.js";
-import {Sample, Slope} from "./analysis.js";
+import {Slope} from "./analysis.js";
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -521,14 +521,7 @@ export class HtmlBenchmarkGroup {
     }
 }
 
-
-
-
-
-
-
-
-class HtmlReport extends Report {
+class JsonReport extends Report {
     constructor() {
         super();
     }
@@ -655,7 +648,7 @@ export class Criterion {
 
     running = 0;
 
-    report = new Reporter(new CliReport, new HtmlReport);
+    report = new Reporter(new CliReport, new JsonReport);
 
     outputDirectory = 'criterion';
 
