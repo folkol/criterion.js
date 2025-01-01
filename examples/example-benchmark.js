@@ -1,5 +1,5 @@
-import {bench, Criterion, group} from '../index.mjs';
-import {fibonacciAsync, fibonacciIterative, fibonacciRecursive} from "./funcs.mjs";
+import {bench, Criterion, group} from '../index.js';
+import {fibonacciAsync, fibonacciIterative, fibonacciRecursive} from "./funcs.js";
 
 let criterion = new Criterion({
     measurementTime: 0.1,

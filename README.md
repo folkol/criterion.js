@@ -51,7 +51,7 @@ group.bench("g", g);
 ## How do I run it?
 
 ```
-$ node path/to/my/example-benchmark.mjs
+$ node path/to/my/example-benchmark.js
 $ npx criterion-report ./criterion/
 ```
 

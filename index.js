@@ -1,5 +1,5 @@
-import * as Analysis from "./analysis.mjs";
-import {Reporter} from "./report.mjs";
+import * as Analysis from "./analysis.js";
+import {Reporter} from "./report.js";
 
 function blackbox(x) {
     globalThis.__criterionBlackboxSink = x;

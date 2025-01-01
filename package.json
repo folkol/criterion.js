@@ -2,13 +2,13 @@
   "name": "@folkol/criterion",
   "version": "0.0.6",
   "description": "Micro-benchmarking tool inspired by Criterion.rs",
-  "main": "index.mjs",
+  "main": "index.js",
   "homepage": "https://github.com/folkol/criterion.js/blob/master/README.md",
   "scripts": {
-    "types": "npx -p typescript tsc index.mjs --declaration --allowJs --emitDeclarationOnly"
+    "types": "npx -p typescript tsc index.js --declaration --allowJs --emitDeclarationOnly"
   },
   "bin": {
-    "criterion-report": "generate-report.mjs"
+    "criterion-report": "generate-report.js"
   },
   "type": "module",
   "keywords": [

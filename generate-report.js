@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import {BenchmarkId,} from "./index.mjs";
-import {renderTemplate} from "./templates.mjs";
-import {Sample, Slope} from "./analysis.mjs";
+import {BenchmarkId,} from "./index.js";
+import {renderTemplate} from "./templates.js";
+import {Sample, Slope} from "./analysis.js";
 import child_process from "node:child_process";
-import {formatMeasurement, HtmlBenchmarkGroup, scaleValues} from "./report.mjs";
+import {formatMeasurement, HtmlBenchmarkGroup, scaleValues} from "./report.js";
 
 class HtmlConfidenceInterval {
     constructor(lower, point, upper) {
