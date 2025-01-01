@@ -319,3 +319,19 @@ export class Criterion {
         return this.runTask(task);
     }
 }
+
+// Would this work?
+let defaultCriterion = new Criterion({warmUpTime: 0.1, measurementTime: 0.1})
+let currentGroup = defaultCriterion.group('default');
+let groupNameStack = [];
+
+export function group(name, cb) {
+    groupNameStack.push(name)
+    currentGroup = defaultCriterion.group(groupNameStack.join('_'))
+    cb()
+    groupNameStack.pop();
+}
+
+export function bench(name, f, ...rest) {
+    currentGroup.bench(name, f, ...rest);
+}

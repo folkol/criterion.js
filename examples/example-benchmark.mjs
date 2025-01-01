@@ -1,4 +1,4 @@
-import {Criterion} from '../index.mjs';
+import {bench, Criterion, group} from '../index.mjs';
 import {fibonacciAsync, fibonacciIterative, fibonacciRecursive} from "./funcs.mjs";
 
 let criterion = new Criterion({
@@ -7,12 +7,13 @@ let criterion = new Criterion({
     warmUpTime: 0.2,
 });
 
-let group1 = criterion.group("Empty");
+bench('Hello', () => {})
 
-group1.bench("Empty", () => {});
-group1.bench("Empty (async)", async () => {});
+group('Fibonacci', () => {
+    bench('Iterative', fibonacciIterative, 15)
+    bench('Recursive', fibonacciRecursive, 15)
 
-let group2 = criterion.group("Fibonacci");
-group2.bench("Iterative", fibonacciIterative, 15);
-group2.bench("Iterative (async)", fibonacciAsync, 15);
-group2.bench("Recursive", fibonacciRecursive, 15);
+    group('Nested', () => {
+        bench('Test', async () => {}, 15)
+    })
+})
