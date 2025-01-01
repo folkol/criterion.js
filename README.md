@@ -48,7 +48,7 @@ bench('My Function', f)
 ## How do I run it?
 
 ```
-$ node path/to/my/benchmark.mjs
+$ node path/to/my/example-benchmark.mjs
 ```
 
 ## TODO
