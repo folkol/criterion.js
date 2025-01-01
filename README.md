@@ -9,7 +9,7 @@ For each of your benchmarks, it does something like this:
 1. runs your benched function in a loop for some time in order to get the system up-to-speed (JIT compilation, various system caches, CPU P-states, etc.)
 2. runs your code a few times more in order to measure its performance (awaiting the result if the benched function is 'thenable')
 3. calculates some statistics for these measurements
-4. generates a report
+4. (generates HTML report)
 
 ## Caveats
 
@@ -25,7 +25,7 @@ $ npm install (--save-dev) @folkol/criterion
 
 ## How do I use it?
 
-WIP: Not published yet!
+(WIP: Not published yet!)
 
 1. Create a Criterion instance
 2. Create a benchmark group
@@ -33,22 +33,26 @@ WIP: Not published yet!
 4. Generate the report
 
 ```
-import bench from '@folkol/criterion'
-import f from 'my-module'
+import {Criterion} from '@folkol/criterion';
+import {f, g} from "./my-module";
 
-[//]: # (Bencher.bench&#40;f&#41;)
-bench('My Function', f)
+let criterion = new Criterion({
+//    measurementTime: 0.1,
+//    nResamples: 10,
+//    warmUpTime: 0.1,
+});
 
-[//]: # (group&#40;'My Functions', bencher => {)
-[//]: # (    bencher.bench&#40;'My Function', f&#41;;)
-[//]: # (    bencher.bench&#40;'My Other Function', g&#41;;)
-[//]: # (}&#41;;)
+let group = criterion.benchmarkGroup("f vs g");
+
+group.bench("f", f);
+group.bench("g", g);
 ```
 
 ## How do I run it?
 
 ```
 $ node path/to/my/example-benchmark.mjs
+$ npx generate-report ./criterion/
 ```
 
 ## TODO
