@@ -1,4 +1,4 @@
-import * as Analysis from "./analysis.js";
+import * as Analysis from "./analysis.mjs";
 import {Reporter} from "./report.mjs";
 
 function blackbox(x) {

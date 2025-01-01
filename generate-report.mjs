@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {BenchmarkId,} from "./index.mjs";
 import {renderTemplate} from "./templates.mjs";
-import {Sample, Slope} from "./analysis.js";
+import {Sample, Slope} from "./analysis.mjs";
 import child_process from "node:child_process";
 import {formatMeasurement, HtmlBenchmarkGroup, scaleValues} from "./report.mjs";
 

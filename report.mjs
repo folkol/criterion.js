@@ -1,4 +1,4 @@
-import {Slope} from "./analysis.js";
+import {Slope} from "./analysis.mjs";
 import path from 'node:path';
 import fs from 'node:fs';
 

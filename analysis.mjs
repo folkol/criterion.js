@@ -15,6 +15,58 @@ function tukey(sample) {
     };
 }
 
+function calculateEstimates(sample, config) {
+    function stats(sample) {
+        let mean = sample.mean();
+        let stdDev = sample.stdDev(mean);
+        let median = sample.percentiles().median();
+        let mad = sample.medianAbsDev(median);
+
+        return [mean, stdDev, median, mad];
+    }
+
+    let cl = config.confidenceLevel;
+    let nResamples = config.nResamples;
+
+    let [mean, stdDev, median, mad] = stats(sample);
+    let points = {
+        mean,
+        stdDev,
+        median,
+        mad,
+    };
+
+    let [distMean, distStdDev, distMedian, distMad] = sample.bootstrap(
+        nResamples,
+        stats,
+    );
+    let distributions = {
+        mean: distMean,
+        slope: null,
+        median: distMedian,
+        medianAbsDev: distMad,
+        stdDev: distStdDev,
+    };
+
+    return [distributions, Estimates.build(distributions, points, cl)];
+}
+
+function dot(xs, ys) {
+    return xs.map((x, i) => [x, ys[i]]).reduce((acc, [x, y]) => acc + x * y, 0);
+}
+
+function regression(data, config) {
+    let cl = config.confidenceLevel;
+    let distribution = data.bootstrap(config.nResamples, (d) => Slope.fit(d));
+    let point = Slope.fit(data);
+    let [lb, ub] = distribution.confidenceInterval(config.confidenceLevel);
+    let se = distribution.stdDev();
+    return [
+        distribution,
+        new Estimate(new ConfidenceInterval(cl, lb, ub), point, se),
+    ];
+}
+
 class Percentiles {
     constructor(numbers) {
         if (numbers.length === 0) {
@@ -193,25 +245,25 @@ class Estimates {
     typical() {
         return this.slope ?? this.mean;
     }
-}
 
-function buildEstimates(distributions, points, cl) {
-    function toEstimate(pointEstimate, distribution) {
-        let [lb, ub] = distribution.confidenceInterval(cl);
-        return new Estimate(
-            new ConfidenceInterval(cl, lb, ub),
-            pointEstimate,
-            distribution.stdDev(),
+    static build(distributions, points, cl) {
+        function toEstimate(pointEstimate, distribution) {
+            let [lb, ub] = distribution.confidenceInterval(cl);
+            return new Estimate(
+                new ConfidenceInterval(cl, lb, ub),
+                pointEstimate,
+                distribution.stdDev(),
+            );
+        }
+
+        return new Estimates(
+            toEstimate(points.mean, distributions.mean),
+            toEstimate(points.median, distributions.median),
+            toEstimate(points.mad, distributions.medianAbsDev),
+            null,
+            toEstimate(points.stdDev, distributions.stdDev),
         );
     }
-
-    return new Estimates(
-        toEstimate(points.mean, distributions.mean),
-        toEstimate(points.median, distributions.median),
-        toEstimate(points.mad, distributions.medianAbsDev),
-        null,
-        toEstimate(points.stdDev, distributions.stdDev),
-    );
 }
 
 export class Slope {
@@ -240,60 +292,6 @@ export class Slope {
 
         return 1 - ss_res / ss_tot;
     }
-}
-
-function calculateEstimates(sample, config) {
-    function stats(sample) {
-        let mean = sample.mean();
-        let stdDev = sample.stdDev(mean);
-        let median = sample.percentiles().median();
-        let mad = sample.medianAbsDev(median);
-
-        return [mean, stdDev, median, mad];
-    }
-
-    let cl = config.confidenceLevel;
-    let nResamples = config.nResamples;
-
-    let [mean, stdDev, median, mad] = stats(sample);
-    let points = {
-        mean,
-        stdDev,
-        median,
-        mad,
-    };
-
-    let [distMean, distStdDev, distMedian, distMad] = sample.bootstrap(
-        nResamples,
-        stats,
-    );
-    let distributions = {
-        mean: distMean,
-        slope: null,
-        median: distMedian,
-        medianAbsDev: distMad,
-        stdDev: distStdDev,
-    };
-
-    let estimates = buildEstimates(distributions, points, cl);
-
-    return [distributions, estimates];
-}
-
-function dot(xs, ys) {
-    return xs.map((x, i) => [x, ys[i]]).reduce((acc, [x, y]) => acc + x * y, 0);
-}
-
-function regression(data, config) {
-    let cl = config.confidenceLevel;
-    let distribution = data.bootstrap(config.nResamples, (d) => Slope.fit(d));
-    let point = Slope.fit(data);
-    let [lb, ub] = distribution.confidenceInterval(config.confidenceLevel);
-    let se = distribution.stdDev();
-    return [
-        distribution,
-        new Estimate(new ConfidenceInterval(cl, lb, ub), point, se),
-    ];
 }
 
 class MeasurementData {
