@@ -3,7 +3,7 @@ import path from 'node:path';
 import {HtmlBenchmarkGroup, InternalBenchmarkId} from "./index.mjs";
 import {renderTemplate} from "./templates.mjs";
 
-function listExistingBenchmarks(directory) {
+function listBenchmarks(directory) {
     const walkSync = (dir, callback) => {
         const files = fs.readdirSync(dir);
         files.forEach((file) => {
@@ -33,7 +33,7 @@ async function main() {
         process.exit(1)
     }
     let outputDir = process.argv[2];
-    let benchmarks = listExistingBenchmarks(outputDir);
+    let benchmarks = listBenchmarks(outputDir);
     console.log(`Found ${benchmarks.length} benchmark reports.`)
     benchmarks.sort((a, b) => a.fullId.localeCompare(b.fullId));
     let idGroups = {};
