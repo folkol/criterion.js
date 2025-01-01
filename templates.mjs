@@ -5,8 +5,8 @@ export function renderTemplate(templateName, data) {
     return template(data);
 }
 
-export let templates = {
-    'index': `<!DOCTYPE html>
+let templates = {
+    index: `<!DOCTYPE html>
 <html>
 
 <head>
@@ -150,7 +150,7 @@ export let templates = {
 </body>
 </html>`,
 
-    'benchmark_report': `<!DOCTYPE html>
+    benchmark_report: `<!DOCTYPE html>
 <html>
 
 <head>
@@ -361,5 +361,5 @@ export let templates = {
     </div>
 </body>
 
-</html>`
-}
+</html>`,
+};

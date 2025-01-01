@@ -1,10 +1,10 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import {formatMeasurement, HtmlBenchmarkGroup, InternalBenchmarkId, scaleValues, short} from "./index.mjs";
+import fs from "node:fs";
+import path from "node:path";
+import {BenchmarkId,} from "./index.mjs";
 import {renderTemplate} from "./templates.mjs";
 import {Sample, Slope} from "./analysis.js";
-import child_process from 'node:child_process';
-
+import child_process from "node:child_process";
+import {formatMeasurement, HtmlBenchmarkGroup, scaleValues} from "./report.mjs";
 
 class HtmlConfidenceInterval {
     constructor(lower, point, upper) {
@@ -13,8 +13,6 @@ class HtmlConfidenceInterval {
         this.upper = upper;
     }
 }
-
-
 
 class Kde {
     constructor(sample, bandwidth) {
@@ -32,106 +30,98 @@ class Kde {
 }
 
 function gauss(x) {
-    return 1 / Math.sqrt(Math.exp(x ** 2) * 2 * Math.PI)
+    return 1 / Math.sqrt(Math.exp(x ** 2) * 2 * Math.PI);
 }
-
 
 function silverman(sample) {
     let factor = 4 / 3;
-    let exponent = 1. / 5.;
+    let exponent = 1 / 5;
     let n = sample.numbers.length;
     let sigma = sample.stdDev();
 
-    return sigma * (factor / n) ** exponent
+    return sigma * (factor / n) ** exponent;
 }
 
-function sweep_and_estimate(
-    sample,
-    npoints,
-    range,
-    point_to_estimate,
-) {
-    let x_min = Math.min(...sample.numbers);
-    let x_max = Math.max(...sample.numbers);
+function sweepAndEstimate(sample, npoints, range, point_to_estimate) {
+    let xMin = Math.min(...sample.numbers);
+    let xMax = Math.max(...sample.numbers);
 
     let kde = new Kde(sample, silverman(sample));
     let h = kde.bandwidth;
-    let [start, end] = range ? range : [x_min - 3 * h, x_max + 3 * h];
+    let [start, end] = range ? range : [xMin - 3 * h, xMax + 3 * h];
     let xs = [];
 
     let step_size = (end - start) / (npoints - 1);
     for (let i = 0; i < npoints; i++) {
-        xs.push(start + step_size * i)
+        xs.push(start + step_size * i);
     }
-    let ys = xs.map(x => kde.estimate(x));
+    let ys = xs.map((x) => kde.estimate(x));
     let point_estimate = kde.estimate(point_to_estimate);
     return [xs, ys, point_estimate];
 }
 
-
-class Plot {
-    constructor(name, url) {
-        this.name = name;
-        this.url = url;
-    }
-}
-
 class PlotContext {
-    constructor(id,
-                outputDirectory,
-                size,
-                is_thumbnail) {
+    constructor(id, outputDirectory, size, isThumbnail) {
         this.id = id;
         this.outputDirectory = outputDirectory;
         this.size = size;
-        this.is_thumbnail = is_thumbnail;
+        this.isThumbnail = isThumbnail;
     }
 }
 
 class PlotData {
-    constructor(measurements, formatter, comparison) {
+    constructor(measurements) {
         this.measurements = measurements;
-        this.formatter = formatter;
-        this.comparison = comparison;
     }
 }
 
 class GnuPlotter {
-    process_list = []
+    process_list = [];
 
     pdf(ctx, data) {
         let size = ctx.size;
         this.process_list.push(
-            ctx.is_thumbnail ?
-                pdf_small(ctx.id, ctx.outputDirectory, data.formatter, data.measurements, size)
-                :
-                pdf(ctx.id, ctx.outputDirectory, data.formatter, data.measurements, size)
+            ctx.isThumbnail
+                ? pdfSmall(ctx.id, ctx.outputDirectory, data.measurements, size)
+                : pdf(ctx.id, ctx.outputDirectory, data.measurements, size),
         );
     }
 
     regression(ctx, data) {
-        this.process_list.push(ctx.is_thumbnail ?
-            regression_small(ctx.id, ctx.outputDirectory, data.formatter, data.measurements, ctx.size)
-            :
-            regression(ctx.id, ctx.outputDirectory, data.formatter, data.measurements, ctx.size));
+        this.process_list.push(
+            ctx.isThumbnail
+                ? regressionSmall(ctx.id, ctx.outputDirectory, data.measurements, ctx.size)
+                : regression(ctx.id, ctx.outputDirectory, data.measurements, ctx.size),
+        );
     }
 }
 
-function pdf_small(id, outputDirectory, formatter, measurements, size) {
+function pdfSmall(id, outputDirectory, measurements, size) {
     let iterCounts = measurements.data.xs;
     let maxIters = Math.max(...iterCounts);
-    let exponent = 3 * Math.floor(Math.log10(maxIters) / 3)
-    let yLabel = exponent ? `Iterations (x 10^${exponent})` : 'Iterations';
+    let exponent = 3 * Math.floor(Math.log10(maxIters) / 3);
+    let yLabel = exponent ? `Iterations (x 10^${exponent})` : "Iterations";
 
     let avg_times = measurements.avgTimes;
     let [lost, lomt, himt, hist] = measurements.avgTimes.fences;
     let scaled_numbers = [...avg_times.sample.numbers];
     let typical = Math.max(...scaled_numbers);
-    let unit = scaleValues(typical, scaled_numbers)
+    let unit = scaleValues(typical, scaled_numbers);
     let scaled_avg_times = new Sample(scaled_numbers);
     let mean = scaled_avg_times.mean();
-    let [xs, ys, mean_y] = sweep_and_estimate(scaled_avg_times, 500, null, mean);
-    let figurePath = path.join(outputDirectory, id.directoryName, 'report', 'pdf_small.svg');
+    let [xs, ys, mean_y] = sweepAndEstimate(
+        scaled_avg_times,
+        500,
+        null,
+        mean,
+    );
+
+    let reportDir = path.join(outputDirectory, id.directoryName, "report");
+    fs.mkdirSync(reportDir, {recursive: true});
+    let figurePath = path.join(
+        reportDir,
+        "pdf_small.svg",
+    );
 
     let min_x = Math.min(...xs);
     let max_x = Math.max(...xs);
@@ -150,58 +140,68 @@ set key off
 set terminal svg dynamic dashed size 450, 300 font 'Helvetica'
 unset bars
 plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder lc rgb '#1f78b4' title 'PDF', '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Mean'
-`
+`;
 
     for (let [x, y] of xs.map((x, i) => [x, ys[i]])) {
         script += `${x} ${y} 0\n`;
     }
-    script += 'e\n';
-    script += `${mean} ${mean_y}\n`
-    script += `${mean} 0\n`
-    script += 'e\n';
-
+    script += "e\n";
+    script += `${mean} ${mean_y}\n`;
+    script += `${mean} 0\n`;
+    script += "e\n";
 
     gnuplot(script);
 }
 
-function confidenceInterval(percentiles, confidence_level) {
-    if (confidence_level <= 0 || confidence_level >= 1) {
-        throw 'unexpected confidence level'
+function confidenceInterval(percentiles, confidenceLevel) {
+    if (confidenceLevel <= 0 || confidenceLevel >= 1) {
+        throw "unexpected confidence level";
     }
 
     return [
-        percentiles.at(50 * (1 - confidence_level)),
-        percentiles.at(50 * (1 + confidence_level))
-    ]
+        percentiles.at(50 * (1 - confidenceLevel)),
+        percentiles.at(50 * (1 + confidenceLevel)),
+    ];
 }
 
-
-
-function regression(id, outputDirectory, formatter, measurements, size) {
+function regression(id, outputDirectory, measurements, size) {
     let slopeEstimate = measurements.absoluteEstimates.slope;
     let slopeDist = measurements.distributions.slope;
-    let [lb, ub] = confidenceInterval(new Sample(slopeDist.numbers).percentiles(), slopeEstimate.confidence_interval.confidence_level);
+    let [lb, ub] = confidenceInterval(
+        new Sample(slopeDist.numbers).percentiles(),
+        slopeEstimate.confidenceInterval.confidenceLevel,
+    );
 
     let data = measurements.data;
 
-    let [max_iters, typical] = [Math.max(...data.xs), Math.max(...data.ys)];
+    let [maxIters, typical] = [Math.max(...data.xs), Math.max(...data.ys)];
     let scaled_numbers = [...data.ys];
     let unit = scaleValues(typical, scaled_numbers);
 
     let point_estimate = Slope.fit(measurements.data);
 
-    let scaled_points = [point_estimate * max_iters, lb * max_iters, ub * max_iters];
+    let scaled_points = [
+        point_estimate * maxIters,
+        lb * maxIters,
+        ub * maxIters,
+    ];
 
     scaleValues(typical, scaled_points);
 
     let [point, lb2, ub2] = scaled_points;
 
-    let exponent = 3 * Math.floor(Math.log10(max_iters) / 3)
+    let exponent = 3 * Math.floor(Math.log10(maxIters) / 3);
     let x_scale = 10 ** -exponent;
 
-    let x_label = exponent === 0 ? "Iterations" : `Iterations (x 10^${exponent})`
+    let x_label =
+        exponent === 0 ? "Iterations" : `Iterations (x 10^${exponent})`;
 
-    let figurePath = path.join(outputDirectory, id.directoryName, 'report', 'regression.svg');
+    let figurePath = path.join(
+        outputDirectory,
+        id.directoryName,
+        "report",
+        "regression.svg",
+    );
 
     let script = `set output '${figurePath}'
 set title 'Fibonacci/Iterative'
@@ -222,32 +222,45 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
     for (let [x, y] of data.xs.map((x, i) => [x, scaled_numbers[i]])) {
         script += `${x} ${y} 0\n`;
     }
-    script += 'e\n';
+    script += "e\n";
 
-    script += `0 0\n`
-    script += `${max_iters} ${point}\n`
-    script += 'e\n';
+    script += `0 0\n`;
+    script += `${maxIters} ${point}\n`;
+    script += "e\n";
 
     gnuplot(script);
 }
 
-function regression_small(id, outputDirectory, formatter, measurements, size) {
+function regressionSmall(id, outputDirectory, measurements, size) {
     let slopeEstimate = measurements.absoluteEstimates.slope;
     let slopeDist = measurements.distributions.slope;
-    let [lb, ub] = confidenceInterval(new Sample(slopeDist.numbers).percentiles(), slopeEstimate.confidence_interval.confidence_level);
+    let [lb, ub] = confidenceInterval(
+        new Sample(slopeDist.numbers).percentiles(),
+        slopeEstimate.confidenceInterval.confidenceLevel,
+    );
     let data = measurements.data;
     let [max_iters, typical] = [Math.max(...data.xs), Math.max(...data.ys)];
     let scaled_numbers = [...data.ys];
     let unit = scaleValues(typical, scaled_numbers);
     let point_estimate = Slope.fit(measurements.data);
-    let scaled_points = [point_estimate * max_iters, lb * max_iters, ub * max_iters];
+    let scaled_points = [
+        point_estimate * max_iters,
+        lb * max_iters,
+        ub * max_iters,
+    ];
     scaleValues(typical, scaled_points);
     let [point, lb2, ub2] = scaled_points;
-    let exponent = 3 * Math.floor(Math.log10(max_iters) / 3)
+    let exponent = 3 * Math.floor(Math.log10(max_iters) / 3);
     let x_scale = 10 ** -exponent;
-    let x_label = exponent === 0 ? "Iterations" : `Iterations (x 10^${exponent})`
+    let x_label =
+        exponent === 0 ? "Iterations" : `Iterations (x 10^${exponent})`;
 
-    let figurePath = path.join(outputDirectory, id.directoryName, 'report', 'regression_small.svg');
+    let figurePath = path.join(
+        outputDirectory,
+        id.directoryName,
+        "report",
+        "regression_small.svg",
+    );
 
     let script = `set output '${figurePath}'
 set xtics nomirror 
@@ -264,49 +277,75 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
      '-' using 1:2:3 with filledcurves fillstyle solid 0.25 noborder lc rgb '#1f78b4' title 'Confidence interval'    
 `;
 
-    for (let [x, y] of data.xs.map((x, i) => [x * x_scale, scaled_numbers[i]])) {
+    for (let [x, y] of data.xs.map((x, i) => [
+        x * x_scale,
+        scaled_numbers[i],
+    ])) {
         script += `${x} ${y} 0\n`;
     }
-    script += 'e\n';
+    script += "e\n";
 
-    script += `0 0\n`
-    script += `${max_iters * x_scale} ${point}\n`
-    script += 'e\n';
+    script += `0 0\n`;
+    script += `${max_iters * x_scale} ${point}\n`;
+    script += "e\n";
 
     gnuplot(script);
 }
 
-
 function gnuplot(script) {
-    let result = child_process.spawnSync('gnuplot', [], {input: script});
+    let result = child_process.spawnSync("gnuplot", [], {input: script});
     if (result.error) {
-        console.error('Error spawning child process:', result.error);
-    } else {
-        if (result.status !== 0) {
-            console.log('Child process output:', result.stdout.toString());
-            console.log('Child process stderr:', result.stderr.toString());
-            console.log('Exit code:', result.status);
+        console.error("Could not run `gnuplot`. Is it installed?", result.error);
+        process.exit(1);
+    } else if (result.status !== 0) {
+        console.error("Failed to render plots");
+        if(process.env.CRITERION_DEBUG) {
+            console.log('======================')
+            console.log('[DEBUG] Gnuplot script')
+            console.log('======================')
+            console.log(script)
+            console.log('======================')
+            console.log("[DEBUG] Gnuplot stdout");
+            console.log('======================')
+            console.log(result.stdout.toString());
+            console.log('======================')
+            console.log("[DEBUG] Gnuplot stderr");
+            console.log('======================')
+            console.error(result.stderr.toString());
+            console.log('======================')
         }
+        console.error("Gnuplot exit code:", result.status);
+        process.exit(1)
     }
 }
 
-function pdf(id, context, formatter, measurements, size) {
-    throw 'WIP'
+function pdf(id, context, measurements, size) {
+    throw "WIP";
 
     let iterCounts = measurements.data.xs;
     let maxIters = Math.max(...iterCounts);
-    let exponent = 3 * Math.floor(Math.log10(maxIters) / 3)
-    let yLabel = exponent ? `Iterations (x 10^${exponent})` : 'Iterations';
+    let exponent = 3 * Math.floor(Math.log10(maxIters) / 3);
+    let yLabel = exponent ? `Iterations (x 10^${exponent})` : "Iterations";
 
     let avg_times = measurements.avgTimes;
     let [lost, lomt, himt, hist] = measurements.avgTimes.fences;
     let scaled_numbers = [...avg_times.sample.numbers];
     let typical = Math.max(...scaled_numbers);
-    let unit = scaleValues(typical, scaled_numbers)
+    let unit = scaleValues(typical, scaled_numbers);
     let scaled_avg_times = new Sample(scaled_numbers);
     let mean = scaled_avg_times.mean();
-    let [xs, ys, mean_y] = sweep_and_estimate(scaled_avg_times, 500, null, mean);
-    let figurePath = path.join(context.outputDirectory, id.directoryName, 'report', 'pdf.svg');
+    let [xs, ys, mean_y] = sweepAndEstimate(
+        scaled_avg_times,
+        500,
+        null,
+        mean,
+    );
+    let figurePath = path.join(
+        context.outputDirectory,
+        id.directoryName,
+        "report",
+        "pdf.svg",
+    );
 
     let min_x = Math.min(...xs);
     let max_x = Math.max(...xs);
@@ -331,20 +370,24 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
      '-' using 1:2 with lines lt 2 lw 2 lc rgb '#ff7f00' notitle, \
      '-' using 1:2 with lines lt 2 lw 2 lc rgb '#e31a1c' notitle, \
      '-' using 1:2 with lines lt 2 lw 2 lc rgb '#e31a1c' notitle
-`
+`;
 
     for (let [x, y] of xs.map((x, i) => [x, ys[i]])) {
         script += `${x} ${y} 0\n`;
     }
-    script += 'e\n';
+    script += "e\n";
 
     // mean
-    script += `${mean} ${mean_y}\n`
-    script += `${mean} 0\n`
-    script += 'e\n';
+    script += `${mean} ${mean_y}\n`;
+    script += `${mean} 0\n`;
+    script += "e\n";
 
     // clean sample
-    for (let [n, x, y] of avg_times.sample.numbers.map((x, i) => [x, scaled_avg_times.numbers[i], iterCounts[i]])) {
+    for (let [n, x, y] of avg_times.sample.numbers.map((x, i) => [
+        x,
+        scaled_avg_times.numbers[i],
+        iterCounts[i],
+    ])) {
         if (n < lost) {
             // los += 1;
         } else if (n > hist) {
@@ -354,10 +397,10 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
         } else if (n > himt) {
             // him += 1;
         } else {
-            script += `${x} ${y}\n`
+            script += `${x} ${y}\n`;
         }
     }
-    script += 'e\n';
+    script += "e\n";
 
     // q1
 
@@ -367,30 +410,14 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
     gnuplot(script);
 }
 
-function generate_plots(id, outputDirectory, formatter, measurements) {
+function generate_plots(id, outputDirectory, measurements) {
+    let plotter = new GnuPlotter();
 
-    let plotter = new GnuPlotter;
+    let plot_ctx = new PlotContext(id, outputDirectory, null, false);
 
-    let plot_ctx = new PlotContext(
-        id,
-        outputDirectory,
-        null,
-        false,
-    );
+    let plot_data = new PlotData(measurements);
 
-
-    let plot_data = new PlotData(
-        measurements,
-        formatter,
-        null);
-
-
-    let plot_ctx_small = new PlotContext(
-        id,
-        outputDirectory,
-        [450, 300],
-        true,
-    )
+    let plot_ctx_small = new PlotContext(id, outputDirectory, [450, 300], true);
 
     plotter.pdf(plot_ctx_small, plot_data);
     // plotter.pdf(plot_ctx, plot_data);
@@ -399,7 +426,6 @@ function generate_plots(id, outputDirectory, formatter, measurements) {
         plotter.regression(plot_ctx_small, plot_data);
         // plotter.regression(plot_ctx, plot_data);
     }
-
 
     //         self.plotter.borrow_mut().pdf(plot_ctx_small, plot_data);
     //         if measurements.absolute_estimates.slope.is_some() {
@@ -465,20 +491,28 @@ function generate_plots(id, outputDirectory, formatter, measurements) {
     //         self.plotter.borrow_mut().wait();
 }
 
+function generatePlotsAndReport(
+    measurements,
+    id,
+    outputDirectory,
+) {
+    console.log('generating plots and report for', id.title);
+    let typical_estimate =
+        measurements.absoluteEstimates.slope ??
+        measurements.absoluteEstimates.mean;
 
-function generate_plots_and_report(_measurements, _formatter, _id, outputDirectory) {
-    let typical_estimate = _measurements.absoluteEstimates.slope ?? _measurements.absoluteEstimates.mean;
+    let time_interval = (est) => {
+        let {lowerBound, upperBound} = est.confidenceInterval;
+        return new HtmlConfidenceInterval(
+            formatMeasurement(lowerBound),
+            formatMeasurement(est.pointEstimate),
+            formatMeasurement(upperBound),
+        );
+    };
 
+    let data = measurements.data;
 
-    let time_interval = est =>
-        new HtmlConfidenceInterval(formatMeasurement(est.confidence_interval.lower_bound),
-            formatMeasurement(est.point_estimate),
-            formatMeasurement(est.confidence_interval.upper_bound));
-
-
-    let data = _measurements.data;
-
-    generate_plots(_id, outputDirectory, _formatter, _measurements)
+    generate_plots(id, outputDirectory, measurements);
 
     let additional_plots = [
         // new Plot("Typical", "typical.svg"),
@@ -487,40 +521,45 @@ function generate_plots_and_report(_measurements, _formatter, _id, outputDirecto
         // new Plot("Median", "median.svg"),
         // new Plot("MAD", "MAD.svg"),
     ];
-    if (_measurements.absoluteEstimates.slope) {
+    if (measurements.absoluteEstimates.slope) {
         // additional_plots.push(new Plot("Slope", "slope.svg"));
     }
 
     let context = {
-        title: _id.title,
-        confidence: typical_estimate.confidence_interval.confidence_level.toFixed(2),
+        title: id.title,
+        confidence:
+            typical_estimate.confidenceInterval.confidenceLevel.toFixed(2),
         thumbnail_width: 450,
         thumbnail_height: 300,
 
-        slope: _measurements.absoluteEstimates.slope ? time_interval(_measurements.absoluteEstimates.slope) : null,
-        mean: time_interval(_measurements.absoluteEstimates.mean),
-        median: time_interval(_measurements.absoluteEstimates.median),
-        mad: time_interval(_measurements.absoluteEstimates.medianAbsDev),
-        std_dev: time_interval(_measurements.absoluteEstimates.stdDev),
+        slope: measurements.absoluteEstimates.slope
+            ? time_interval(measurements.absoluteEstimates.slope)
+            : null,
+        mean: time_interval(measurements.absoluteEstimates.mean),
+        median: time_interval(measurements.absoluteEstimates.median),
+        mad: time_interval(measurements.absoluteEstimates.medianAbsDev),
+        std_dev: time_interval(measurements.absoluteEstimates.stdDev),
         r2: new HtmlConfidenceInterval(
-            Slope.rSquared(typical_estimate.confidence_interval.lower_bound, data).toFixed(7),
-            Slope.rSquared(typical_estimate.point_estimate, data).toFixed(7),
-            Slope.rSquared(typical_estimate.confidence_interval.upper_bound, data).toFixed(7),
+            Slope.rSquared(
+                typical_estimate.confidenceInterval.lowerBound,
+                data,
+            ).toFixed(7),
+            Slope.rSquared(typical_estimate.pointEstimate, data).toFixed(7),
+            Slope.rSquared(
+                typical_estimate.confidenceInterval.upperBound,
+                data,
+            ).toFixed(7),
         ),
         additional_plots,
         comparison: null,
     };
 
-    let report_path = path.join(
-        outputDirectory,
-        _id.directoryName,
-        "report",
-        "index.html");
-
-    let output = renderTemplate('benchmark_report', context);
+    let reportDir = path.join(outputDirectory, id.directoryName, "report");
+    fs.mkdirSync(reportDir, {recursive: true});
+    let report_path = path.join(reportDir, "index.html");
+    let output = renderTemplate("benchmark_report", context);
     fs.writeFileSync(report_path, output);
 }
-
 
 function listBenchmarks(directory) {
     const walkSync = (dir, callback) => {
@@ -530,40 +569,42 @@ function listBenchmarks(directory) {
             const stats = fs.statSync(filepath);
             if (stats.isDirectory()) {
                 walkSync(filepath, callback);
-            } else if (stats.isFile() && file === 'benchmark.json') {
-                let measurements = fs.readFileSync(path.join(dir, 'measurements.json'));
-                let blob = fs.readFileSync(filepath);
-                let {groupId, functionId, valueString, throughput} = JSON.parse(blob);
-                let id = new InternalBenchmarkId(groupId, functionId, valueString, throughput);
-                generate_plots_and_report(JSON.parse(measurements), x => {
-                        console.error('Unexpected use of dummy formatter')
-                        throw 'should not be used'
-                    }
-                    , id
-                    , directory);
+            } else if (stats.isFile() && file === "benchmark.json") {
                 callback(filepath);
             }
         });
     };
     let benchmarks = [];
-    walkSync(directory, file => {
-        let blob = fs.readFileSync(file);
-        let {groupId, functionId, valueString, throughput} = JSON.parse(blob);
-        let id = new InternalBenchmarkId(groupId, functionId, valueString, throughput);
-        return benchmarks.push(id);
-    })
+    walkSync(directory, (file) => {
+        benchmarks.push(file);
+    });
     return benchmarks;
 }
 
-
 async function main() {
     if (process.argv.length !== 3 || !fs.existsSync(process.argv[2])) {
-        console.error('usage: generate-report path_to_criterion_folder')
-        process.exit(1)
+        console.error("usage: generate-report path_to_criterion_folder");
+        process.exit(1);
     }
     let outputDir = process.argv[2];
-    let benchmarks = listBenchmarks(outputDir);
-    console.log(`Found ${benchmarks.length} benchmark reports.`)
+
+    let benchmarkFiles = listBenchmarks(outputDir);
+    console.log(`Found ${benchmarkFiles.length} benchmarks.`);
+    let benchmarks = [];
+    for (let benchmark of benchmarkFiles) {
+        let blob = fs.readFileSync(benchmark);
+        let {id, measurements} = JSON.parse(blob);
+        let {groupId, functionId, valueString, throughput} = id;
+        let internalBenchmarkId = new BenchmarkId(
+            groupId,
+            functionId,
+            valueString,
+            throughput,
+        );
+        generatePlotsAndReport(measurements, internalBenchmarkId, outputDir);
+        benchmarks.push(internalBenchmarkId);
+    }
+
     benchmarks.sort((a, b) => a.fullId.localeCompare(b.fullId));
     let idGroups = {};
     for (let benchmark of benchmarks) {
@@ -572,16 +613,25 @@ async function main() {
         idGroups[benchmark.groupId] = group;
     }
 
-    let groups = Object.values(idGroups).map(group => HtmlBenchmarkGroup.fromGroup(outputDir, group));
+    let groups = Object.values(idGroups).map((group) =>
+        HtmlBenchmarkGroup.fromGroup(outputDir, group),
+    );
     groups.sort((a, b) => a.groupReport.name.localeCompare(b.groupReport.name));
 
-    let reportDir = path.join(outputDir, 'report');
+    let reportDir = path.join(outputDir, "report");
     fs.mkdirSync(reportDir, {recursive: true});
-    let reportPath = path.join(reportDir, 'index.html')
+    let reportPath = path.join(reportDir, "index.html");
 
-    fs.writeFileSync(reportPath, renderTemplate('index', {groups, title: 'my report', content: 'wat?'}));
+    fs.writeFileSync(
+        reportPath,
+        renderTemplate("index", {
+            groups,
+            title: "my report",
+            content: "wat?",
+        }),
+    );
 
-    console.log('Wrote', reportPath);
+    console.log("Wrote", reportPath);
 }
 
-main()
+main();

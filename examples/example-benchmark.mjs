@@ -1,20 +1,18 @@
 import {Criterion} from '../index.mjs';
 import {fibonacciAsync, fibonacciIterative, fibonacciRecursive} from "./funcs.mjs";
 
-console.log(fibonacciAsync(20))
-console.log(fibonacciIterative(20))
-console.log(fibonacciRecursive(20))
-
 let criterion = new Criterion({
     measurementTime: 0.1,
     nResamples: 10,
-    warmUpTime: 0.1,
+    warmUpTime: 0.2,
 });
 
-let group = criterion.benchmarkGroup("Fibonacci");
+let group1 = criterion.benchmarkGroup("Empty");
 
-group.bench("Empty", () => {});
-group.bench("Empty (async)", async () => {});
-group.bench("Iterative", fibonacciIterative, 15);
-group.bench("Iterative (async)", fibonacciAsync, 15);
-group.bench("Recursive", fibonacciRecursive, 15);
+group1.bench("Empty", () => {});
+group1.bench("Empty (async)", async () => {});
+
+let group2 = criterion.benchmarkGroup("Fibonacci");
+group2.bench("Iterative", fibonacciIterative, 15);
+group2.bench("Iterative (async)", fibonacciAsync, 15);
+group2.bench("Recursive", fibonacciRecursive, 15);

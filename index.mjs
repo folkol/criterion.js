@@ -1,22 +1,23 @@
 import * as Analysis from "./analysis.js";
-import {Slope} from "./analysis.js";
-import fs from 'node:fs';
-import path from 'node:path';
+import {Reporter} from "./report.mjs";
+
+function blackbox(x) {
+    globalThis.__criterionBlackboxSink = x;
+    return x;
+}
 
 class Bencher {
-    constructor(iterated,
-                iters,
-                value,
-                elapsed_time) {
-        this.iterated = iterated;
+    iterated = false;
+    value = 0;
+    elapsedNs = 0;
+
+    constructor(iters) {
         this.iters = iters;
-        this.value = value;
-        this.elapsed_time = elapsed_time;
     }
 
     assertIterated() {
         if (!this.iterated) {
-            console.error('Benchmark function must call Bencher.iter.')
+            console.error("Benchmark function must call Bencher.iter.");
         }
         this.iterated = false;
     }
@@ -31,134 +32,115 @@ class Bencher {
             }
         } else {
             for (let i = 0; i < this.iters; i++) {
-                sink = f(...input)
+                sink = f(...input);
             }
         }
         blackbox(sink);
-        this.elapsed_time = (performance.now() - start) * 1e6;
+        this.elapsedNs = (performance.now() - start) * 1e6;
     }
 }
 
-class GroupBenchmarkId {
-    name;
-    _parameter;
-
-    constructor(name) {
-        this.name = name;
-    }
-}
-
-export class InternalBenchmarkId {
-    constructor(groupId, functionId, valueString, throughput) {
+export class BenchmarkId {
+    constructor(groupId, functionId) {
         this.groupId = groupId;
         this.functionId = functionId;
-        this.valueString = valueString;
-        this.throughput = throughput;
-        if (groupId && valueString) {
-            this.fullId = `${groupId}/${functionId}/${valueString}`;
-        } else if (groupId) {
-            this.fullId = `${groupId}/${functionId}`;
-        } else {
-            this.fullId = functionId;
-        }
+        this.fullId = `${groupId}/${functionId}`;
         this.title = this.fullId;
-        this.directoryName = this.fullId;
+        this.directoryName = this.fullId; // TODO slug?
     }
 }
 
-function iterationCounts(samplingMode, warmupMeanExecutionTime, sampleCount, targetTime) {
-    // if samplingMode == Linear
-
-    let n = sampleCount;
-    let met = warmupMeanExecutionTime;
-    let m_ns = targetTime;
-
-    // Solve: [d + 2*d + 3*d + ... + n*d] * met = m_ns
-    let totalRuns = n * (n + 1) / 2;
-    let d = Math.max(1, (Math.ceil(m_ns / met / totalRuns)))
-    let expectedNs = totalRuns * d * met;
-
-    if (d === 1) {
-        console.error(
-            `\nWarning: Unable to complete ${n}`,
-            `samples in ${targetTime}.`,
-            `You may wish to increase target time to ${expectedNs}`,
-        );
+class BenchmarkTarget {
+    constructor(func) {
+        this.func = func;
     }
 
-    return Array(n).fill(1).map((_, i) => (i + 1) * d)
-}
+    iterationCounts(warmupMeanExecutionTime, sampleCount, targetTime) {
+        let n = sampleCount;
+        let met = warmupMeanExecutionTime;
 
-class Function {
-    constructor(f) {
-        this.f = f;
+        // Solve: [d + 2*d + 3*d + ... + n*d] * met = targetTime
+        let totalRuns = (n * (n + 1)) / 2;
+        let d = Math.max(1, Math.ceil(targetTime / met / totalRuns));
+        let expectedNs = totalRuns * d * met;
+
+        if (d === 1) {
+            let suggestedTime = Math.ceil(expectedNs / 1e9);
+            console.error(
+                `Warning: Unable to complete ${n} samples in ${targetTime / 1e9}.`,
+                `You may wish to increase target time to ~${suggestedTime} s.`,
+            );
+        }
+
+        let iterations = [];
+        for (let i = 1; i <= n; i++) {
+            iterations.push(i * d);
+        }
+        return iterations;
     }
 
-    async sample(
-        id,
-        config,
-        criterion,
-        reportContext,
-        parameter
-    ) {
+    async sample(id, config, criterion, reportContext, input) {
         let wu = config.warmUpTime * 1e9;
 
         criterion.report.warmup(id, reportContext, wu);
 
-        let [elapsed, iters] = await this.warmUp(wu, parameter);
+        let meanExecutionTime = await this.warmUp(wu, input);
 
-        let met = elapsed / iters;
         let n = config.sampleSize;
 
-        let actualSamplingMode = 'linear'; // TODO
-        let mIters = iterationCounts(actualSamplingMode, met, n, config.measurementTime * 1e9);
-        let expectedNs = mIters.reduce((acc, x) => acc + x * met);
-        let totalIters = mIters.reduce((acc, x) => acc + x);
+        let iters = this.iterationCounts(
+            meanExecutionTime,
+            n,
+            config.measurementTime * 1e9,
+        );
+        let totalIters = iters.reduce((acc, x) => acc + x);
+        let expectedNs = totalIters * meanExecutionTime;
 
-        criterion.report.measurementStart(id, reportContext, n, expectedNs, totalIters);
+        criterion.report.measurementStart(
+            id,
+            reportContext,
+            n,
+            expectedNs,
+            totalIters,
+        );
 
-        let rawTimes = await this.bench(mIters, parameter);
-        let times = rawTimes.map(Math.round)
+        let results = await this.bench(iters, input);
+        let times = results.map(Math.round);
 
-        return [
-            actualSamplingMode,
-            mIters,
-            times
-        ]
+        return [iters, times];
     }
 
-    async warmUp(howLong, parameter) {
-        let f = this.f;
-        let bencher = new Bencher(false, 1, 0, 0)
+    async warmUp(howLong, input) {
+        let f = this.func;
+        let bencher = new Bencher(1);
         let totalIters = 0;
-        let elapsedTime = 0;
-        while (elapsedTime < howLong) {
-            await f(bencher, blackbox(parameter));
+        let elapsedNs = 0;
+        while (elapsedNs < howLong) {
+            await f(bencher, blackbox(input));
             bencher.assertIterated();
             totalIters += bencher.iters;
-            elapsedTime += bencher.elapsed_time;
+            elapsedNs += bencher.elapsedNs;
             bencher.iters *= 2;
         }
 
-        return [elapsedTime, totalIters];
+        return elapsedNs / totalIters;
     }
 
-    async bench(mIters, parameter) {
-        let f = this.f;
-        let results = []
-        for (let n of mIters) {
-            let bencher = new Bencher(false, n, 0, 0)
+    async bench(iters, parameter) {
+        let f = this.func;
+        let results = [];
+        for (let n of iters) {
+            let bencher = new Bencher(n);
             await f(bencher, parameter);
             bencher.assertIterated();
-            results.push(bencher.elapsed_time);
+            results.push(bencher.elapsedNs);
         }
         return results;
     }
 }
 
 /**
- * Class representing a group of related benchmarks.
- * Benchmarks within a group share a common name and are managed together.
+ * A group of related benchmarks. Typically alternative implementations of the same function.
  */
 class BenchmarkGroup {
     /**
@@ -194,354 +176,35 @@ class BenchmarkGroup {
     async runBench(id, input, f) {
         let config = this.criterion.config;
         let reportContext = {
-            outputDirectory: this.criterion.outputDirectory,
+            outputDirectory: this.criterion.config.outputDirectory,
         };
-        let internalId = new InternalBenchmarkId(
-            this.name,
-            id.name,
-            id._parameter,
-        );
-        let func = new Function(f);
+        let target = new BenchmarkTarget(f);
 
         await Analysis.common(
-            internalId,
-            func,
+            id,
+            target,
             config,
             this.criterion,
             reportContext,
-            input
+            input,
         );
     }
 
     /**
      * Adds a new benchmark to the group and schedules it for execution.
-     * The benchmark is defined by its name and function, and additional parameters can be passed.
      * @param {string} name - The name of the benchmark.
-     * @param {Function} f - The function to be benchmarked.
+     * @param {BenchmarkTarget} f - The function to be benchmarked.
      * @param {...any} rest - Additional parameters for the benchmark function.
      */
     bench(name, f, ...rest) {
-        let task = async () => this.runBench(
-            new GroupBenchmarkId(name),
-            () => blackbox(rest),
-            async (b, i) => await b.iter(f, ...i())
-        );
+        let task = async () =>
+            this.runBench(
+                new BenchmarkId(this.name, name),
+                () => blackbox(rest),
+                async (b, i) => await b.iter(f, ...i()),
+            );
         this.criterion.submit(task);
     }
-}
-
-class Report {
-    benchmarkStart(_id, _context) {
-    }
-
-    warmup(_id, _context, _warmupNs) {
-    }
-
-    analysis(_id, _context) {
-    }
-
-    measurementStart(
-        _id,
-        _context,
-        _sample_count,
-        _estimateNs,
-        _iterCount,
-    ) {
-    }
-
-    measurementComplete(
-        _id,
-        _context,
-        _measurements,
-        _formatter,
-    ) {
-    }
-}
-
-export function scaleValues(ns, values) {
-    let factor, unit;
-    if (ns < 10 ** 0) {
-        [factor, unit] = [10 ** 3, "ps"];
-    } else if (ns < 10 ** 3) {
-        [factor, unit] = [10 ** 0, "ns"];
-    } else if (ns < 10 ** 6) {
-        [factor, unit] = [10 ** -3, "µs"];
-    } else if (ns < 10 ** 9) {
-        [factor, unit] = [10 ** -6, "ms"];
-    } else {
-        [factor, unit] = [10 ** -9, "s"];
-    }
-
-    values.forEach((v, i, arr) => arr[i] = v * factor)
-
-    return unit;
-}
-
-export function formatMeasurement(value) {
-    let values = [value];
-    let unit = scaleValues(value, values);
-    return `${short(values[0]).padEnd(6)} ${unit}`
-}
-
-export function short(n) {
-    if (n < 10.0) {
-        return n.toFixed(4);
-    } else if (n < 100.0) {
-        return n.toFixed(3);
-    } else if (n < 1000.0) {
-        return n.toFixed(2);
-    } else if (n < 10000.0) {
-        return n.toFixed(10)
-    } else {
-        return n.toFixed(0);
-    }
-}
-
-function formatTime(ns) {
-    if (ns < 1.0) {
-        return `${short(ns * 1e3)} ps`.padStart(6);
-    } else if (ns < 10 ** 3) {
-        return `${short(ns)} ns`.padStart(6)
-    } else if (ns < 10 ** 6) {
-        return `${short(ns / 1e3)} µs`.padStart(6);
-    } else if (ns < 10 ** 9) {
-        return `${short(ns / 1e6)} ms`.padStart(6);
-    } else {
-        return `${short(ns / 1e9)} s`.padStart(6)
-    }
-}
-
-function formatIterCount(iterations) {
-    if (iterations < 10_000) {
-        return `${iterations} iterations`;
-    } else if (iterations < 1_000_000) {
-        return `${(iterations / 1000).toFixed(0)}k iterations`;
-    } else if (iterations < 10_000_000) {
-        let s = ((iterations) / (1000.0 * 1000.0)).toFixed(1);
-        return `${s}M iterations`;
-    } else if (iterations < 1_000_000_000) {
-        let s = ((iterations) / (1000.0 * 1000.0)).toFixed(1);
-        return `${s}M iterations`;
-    } else if (iterations < 10_000_000_000) {
-        let s = (iterations) / (1000.0 * 1000.0 * 1000.0).toFixed(1);
-        return `${s}B iterations`;
-    } else {
-        let s = (iterations / (1000.0 * 1000.0 * 1000.0)).toFixed(0);
-        return `${s}B iterations`;
-    }
-}
-
-class CliReport extends Report {
-    benchmarkStart(id, _context) {
-        console.log('Benchmarking', id.title);
-    }
-
-    analysis(id, _context) {
-        console.log(`Benchmarking ${id.title}: Analyzing`);
-    }
-
-    warmup(id, _context, warmupNs) {
-        console.log(`Benchmarking ${id.title}: Warming up for ${formatTime(warmupNs)}`)
-    }
-
-    measurementStart(_id, _context, _sample_count, _estimate_ns, _iter_count) {
-        console.log(
-            `Benchmarking ${_id.title}:`,
-            `Collecting ${_sample_count} samples in estimated`,
-            `${formatTime(_estimate_ns)} (${formatIterCount(_iter_count)})`
-        )
-    }
-
-    measurementComplete(id, _context, measurements, formatter) {
-        let typicalEstimate = measurements.absoluteEstimates.typical();
-
-        console.log(
-            `${id.title.padEnd(23)} time:`,
-            `[${formatMeasurement(typicalEstimate.confidence_interval.lower_bound)}`,
-            formatMeasurement(typicalEstimate.point_estimate),
-            `${formatMeasurement(typicalEstimate.confidence_interval.upper_bound)}]`
-        )
-
-        if (measurements.throughput) {
-            // TODO
-        }
-
-        this.outliers(measurements.avgTimes)
-
-        let slopeEstimate = measurements.absoluteEstimates.slope;
-
-        function formatShortEstimate(estimate) {
-            let lb = formatMeasurement(estimate.confidence_interval.lower_bound);
-            let ub = formatMeasurement(estimate.confidence_interval.upper_bound);
-            return `[${lb} ${ub}]`;
-        }
-
-        if (slopeEstimate) {
-            let slop = formatShortEstimate(slopeEstimate);
-            let lb = Slope.rSquared(slopeEstimate.confidence_interval.lower_bound, measurements.data).toFixed(7);
-            let ub = Slope.rSquared(slopeEstimate.confidence_interval.upper_bound, measurements.data).toFixed(7);
-            console.log(`slope  ${slop}`, `R^2            [${lb} ${ub}]`)
-        }
-        let mean = formatShortEstimate(measurements.absoluteEstimates.mean);
-        let stdDev = formatShortEstimate(measurements.absoluteEstimates.stdDev);
-        let median = formatShortEstimate(measurements.absoluteEstimates.median);
-        let medianAbsDev = formatShortEstimate(measurements.absoluteEstimates.medianAbsDev);
-        console.log(`mean   ${mean} std. dev.      ${stdDev}`)
-        console.log(`median ${median} med. abs. dev. ${medianAbsDev}`);
-    }
-
-    outliers(labeledSample) {
-        let [los, lom, noa, him, his] = [0, 0, 0, 0, 0];
-        let [lost, lomt, himt, hist] = labeledSample.fences;
-        for (let n of labeledSample.sample.numbers) {
-            if (n < lost) {
-                los += 1;
-            } else if (n > hist) {
-                his += 1;
-            } else if (n < lomt) {
-                lom += 1;
-            } else if (n > himt) {
-                him += 1;
-            } else {
-                noa += 1
-            }
-        }
-        // return [los, lom, noa, him, his];
-        let numOutliers = los + lom + him + his;
-        let sampleSize = labeledSample.sample.numbers.length;
-        if (numOutliers === 0) {
-            return;
-        }
-
-        let percent = n => 100 * n / sampleSize;
-
-        console.log(`Found ${numOutliers} outliers among ${sampleSize} measurements (${percent(numOutliers)}%)`)
-        let print = (n, label) => {
-            if (n !== 0) {
-                console.log(`  ${n} (${percent(n).toFixed(2)}%) ${label}`);
-            }
-        }
-        print(los, "low severe");
-        print(him, "low mild");
-        print(him, "high mild");
-        print(his, "high severe");
-    };
-}
-
-class ReportLink {
-    constructor(name, pathOrNull) {
-        this.name = name;
-        this.pathOrNull = pathOrNull;
-    }
-
-    static group(outputDir, groupId) {
-        let reportPath = path.join(outputDir, groupId, 'report', 'index.html')
-        let pathOrNull = fs.existsSync(reportPath) ? reportPath : null;
-        return new ReportLink(groupId, pathOrNull)
-    }
-
-    static individual(outputDir, id) {
-        let reportPath = id.directoryName;
-        let pathOrNull = fs.existsSync(reportPath) ? reportPath : null;
-        return new ReportLink(id.title, pathOrNull);
-    }
-
-    static value(outputDir, groupId, value) {
-        let reportPath = path.join(outputDir, groupId, value);
-        let pathOrNull = fs.existsSync(reportPath) ? reportPath : null;
-        return new ReportLink(value, pathOrNull);
-    }
-
-    static function(outputDir, groupId, f) {
-        let reportPath = path.join(outputDir, groupId, f);
-        let pathOrNull = fs.existsSync(reportPath) ? reportPath : null;
-        return new ReportLink(f, pathOrNull);
-    }
-}
-
-class BenchmarkValueGroup {
-    constructor(value, benchmarks) {
-        this.value = value;
-        this.benchmarks = benchmarks;
-    }
-}
-
-export class HtmlBenchmarkGroup {
-    constructor(groupReport, functionLinks, valueLinks, individualLinks) {
-        this.groupReport = groupReport;
-        this.functionLinks = functionLinks;
-        this.valueLinks = valueLinks;
-        this.valueGroups = individualLinks;
-    }
-
-    static fromGroup(outputDir, group) {
-        this.outputDir = outputDir;
-        this.group = group;
-        let groupId = group[0].groupId;
-        let groupReport = ReportLink.group(outputDir, groupId);
-        let functionIds = [];
-        let values = [];
-        let individualLinks = new Map;
-        for (let id of group) {
-            let functionId = id.functionId;
-            let value = id.value;
-            let individualLink = ReportLink.individual(outputDir, id);
-            functionIds.push(functionId);
-            values.push(value);
-            individualLinks.set(`${functionId}-${value}`, individualLink);
-        }
-
-        let uniqueSortedValues = [...new Set(values)];
-        if (values.every(x => typeof x === 'number')) {
-            uniqueSortedValues.sort((a, b) => b - a);
-        } else {
-            uniqueSortedValues.sort()
-        }
-
-        let uniqueSortedFunctionIds = [...new Set(functionIds)].toSorted();
-        let valueGroups = [];
-        for (let value of uniqueSortedValues) {
-            let row = new Set;
-            for (let functionId of uniqueSortedFunctionIds) {
-                let key = `${functionId}-${value}`;
-                let link = individualLinks.get(key);
-                if (link) {
-                    individualLinks.delete(key);
-                    row.add(link);
-                }
-            }
-            let valueOrNull = value ? ReportLink.value(outputDir, groupId, value) : null;
-            valueGroups.push(new BenchmarkValueGroup(valueOrNull, [...row].toSorted()));
-        }
-
-        let functionLinks = uniqueSortedFunctionIds.map(f => ReportLink.function(outputDir, groupId, f));
-        let valueLinks = uniqueSortedValues.map(value => value ? ReportLink.value(outputDir, groupId, value) : null);
-
-        return new HtmlBenchmarkGroup(groupReport, functionLinks, valueLinks, valueGroups)
-    }
-}
-
-class JsonReport extends Report {
-    constructor() {
-        super();
-    }
-
-    measurementComplete(_id, _context, _measurements, _formatter) {
-        // TODO: just write the data needed and render the report in another program?
-
-        let report_dir = path.join(
-            _context.outputDirectory,
-            _id.directoryName,
-            'report'
-        )
-        fs.mkdirSync(report_dir, {recursive: true});
-        let filePath = path.join(
-            _context.outputDirectory,
-            _id.directoryName,
-            "measurements.json");
-        fs.writeFileSync(filePath, JSON.stringify(_measurements));
-    }
-
 }
 
 /**
@@ -588,6 +251,13 @@ class CriterionConfig {
     warmUpTime = 3;
 
     /**
+     * Directory where to store the output files.
+     * @type {string}
+     * @default criterion
+     */
+    outputDirectory = "criterion";
+
+    /**
      * Creates an instance of CriterionConfig.
      * Merges the provided options with the default configuration.
      * @param {Object} [opts] - An object containing custom configuration options.
@@ -602,59 +272,14 @@ class CriterionConfig {
     }
 }
 
-
-export class Reporter extends Report {
-    constructor(...reporters) {
-        super();
-        this.reporters = reporters;
-    }
-
-    benchmarkStart(id, ctx) {
-        this.reporters.forEach(reporter => reporter.benchmarkStart(id, ctx))
-    }
-
-    analysis(id, context) {
-        this.reporters.forEach(reporter => reporter.analysis(id, context))
-    }
-
-    warmup(id, context, wu) {
-        this.reporters.forEach(reporter => reporter.warmup(id, context, wu))
-    }
-
-    measurementStart(id, context, sampleCount, estimateNs, iterCount) {
-        this.reporters.forEach(reporter => reporter.measurementStart(id, context, sampleCount, estimateNs, iterCount))
-    }
-
-    measurementComplete(id, context, measurements, formatter) {
-        this.reporters.forEach(reporter => reporter.measurementComplete(id, context, measurements, formatter))
-    }
-}
-
-
-
 /**
  * The main API for Criterion.js
  * Manages task execution and reporting for benchmarking tasks.
  */
 export class Criterion {
+    numRunning = 0;
+    report = new Reporter;
     queue = [];
-
-    /**
-     * The maximum number of tasks that can run concurrently.
-     * @type {number}
-     * @default 1
-     */
-    concurrency = 1;
-
-    running = 0;
-
-    report = new Reporter(new CliReport, new JsonReport);
-
-    outputDirectory = 'criterion';
-
-    // measurement = new WallTime;
-
-    config;
 
     /**
      * Creates an instance of Criterion.
@@ -666,7 +291,7 @@ export class Criterion {
 
     /**
      * Creates a new benchmark group with a specified name.
-     * Benchmark groups allow grouping of related benchmarks for organization.
+     * Typically alternative implementations of the same functionality.
      * @param {string} name - The name of the benchmark group.
      * @returns {BenchmarkGroup} A new BenchmarkGroup instance.
      */
@@ -675,16 +300,17 @@ export class Criterion {
     }
 
     async runTask(task) {
-        if (this.running >= this.concurrency) {
-            await new Promise(resolve => this.queue.push(resolve));
+        if (this.numRunning > 0) {
+            await new Promise((resolve) => this.queue.push(resolve));
         }
-        this.running++;
+        this.numRunning++;
         try {
             await task();
         } finally {
-            this.running--;
+            this.numRunning--;
             if (this.queue.length > 0) {
-                this.queue.shift()();
+                let resolve = this.queue.shift();
+                resolve();
             }
         }
     }
@@ -692,9 +318,4 @@ export class Criterion {
     submit(task) {
         return this.runTask(task);
     }
-}
-
-export function blackbox(x) {
-    globalThis.sink = x;
-    return x
 }

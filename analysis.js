@@ -1,6 +1,3 @@
-import fs from 'node:fs';
-import path from 'node:path';
-
 function tukey(sample) {
     let [q1, _, q3] = sample.percentiles().quartiles();
     let iqr = q3 - q1;
@@ -14,8 +11,8 @@ function tukey(sample) {
             q3 + k_m * iqr,
             q3 + k_s * iqr,
         ],
-        sample
-    }
+        sample,
+    };
 }
 
 class Percentiles {
@@ -45,11 +42,7 @@ class Percentiles {
     }
 
     quartiles() {
-        return [
-            this.at(25),
-            this.at(50),
-            this.at(75),
-        ]
+        return [this.at(25), this.at(50), this.at(75)];
     }
 
     median() {
@@ -58,7 +51,7 @@ class Percentiles {
 }
 
 class Distribution {
-    numbers = []
+    numbers = [];
 
     push(x) {
         this.numbers.push(x);
@@ -66,10 +59,10 @@ class Distribution {
 
     confidenceInterval(cl) {
         if (cl <= 0 || cl >= 1) {
-            throw 'Unsupported cl!';
+            throw "Unsupported cl!";
         }
         let percentiles = new Sample(this.numbers).percentiles();
-        return [percentiles.at(50 * (1 - cl)), percentiles.at(50 * (1 + cl))]
+        return [percentiles.at(50 * (1 - cl)), percentiles.at(50 * (1 + cl))];
     }
 
     stdDev() {
@@ -83,8 +76,13 @@ export class Sample {
     }
 
     var() {
-        let mean = this.mean()
-        return this.numbers.map(x => (x - mean) ** 2).reduce((acc, x) => acc + x) / (this.numbers.length - 1)
+        let mean = this.mean();
+        return (
+            this.numbers
+                .map((x) => (x - mean) ** 2)
+                .reduce((acc, x) => acc + x) /
+            (this.numbers.length - 1)
+        );
     }
 
     mean() {
@@ -101,19 +99,23 @@ export class Sample {
     }
 
     medianAbsDev(median) {
-        let absDevs = this.numbers.map(x => Math.abs(x - median));
+        let absDevs = this.numbers.map((x) => Math.abs(x - median));
         return new Sample(absDevs).percentiles().median() * 1.4826;
     }
 
     bootstrap(nResamples, stats) {
         function resample(numbers) {
-            return new Sample(numbers.map(() => numbers[Math.floor(Math.random() * numbers.length)]));
+            return new Sample(
+                numbers.map(
+                    () => numbers[Math.floor(Math.random() * numbers.length)],
+                ),
+            );
         }
 
-        let distMean = new Distribution;
-        let distStdDev = new Distribution;
-        let distMedian = new Distribution;
-        let distMad = new Distribution;
+        let distMean = new Distribution();
+        let distStdDev = new Distribution();
+        let distMedian = new Distribution();
+        let distMad = new Distribution();
         for (let i = 0; i < nResamples; i++) {
             let [mean, stdDev, median, mad] = stats(resample(this.numbers));
             distMean.push(mean);
@@ -121,19 +123,21 @@ export class Sample {
             distMedian.push(median);
             distMad.push(mad);
         }
-        return [
-            distMean,
-            distStdDev,
-            distMedian,
-            distMad,
-        ];
+        return [distMean, distStdDev, distMedian, distMad];
     }
 }
 
 class Data {
     constructor(xs, ys) {
-        if (xs.length !== ys.length || xs.length <= 1 || xs.some(x => isNaN(x)) || ys.some(y => isNaN(y))) {
-            throw new Error(`Can't create Dataset from xs and ys ${xs.length} ${ys.length} ${xs.some(x => isNaN(x))} ${ys.some(y => isNaN(y))}`);
+        if (
+            xs.length !== ys.length ||
+            xs.length <= 1 ||
+            xs.some((x) => isNaN(x)) ||
+            ys.some((y) => isNaN(y))
+        ) {
+            throw new Error(
+                `Can't create Dataset from xs and ys ${xs.length} ${ys.length} ${xs.some((x) => isNaN(x))} ${ys.some((y) => isNaN(y))}`,
+            );
         }
 
         this.xs = xs;
@@ -152,29 +156,28 @@ class Data {
             return new Data(outXs, outYs);
         }
 
-        let slopes = new Distribution;
+        let slopes = new Distribution();
         for (let i = 0; i < nResamples; i++) {
             let slope = stats(resample(this.xs, this.ys));
             slopes.push(slope);
         }
         return slopes;
     }
-
 }
 
 class ConfidenceInterval {
-    constructor(confidence_level, lower_bound, upper_bound) {
-        this.confidence_level = confidence_level;
-        this.lower_bound = lower_bound;
-        this.upper_bound = upper_bound;
+    constructor(confidenceLevel, lowerBound, upperBound) {
+        this.confidenceLevel = confidenceLevel;
+        this.lowerBound = lowerBound;
+        this.upperBound = upperBound;
     }
 }
 
 class Estimate {
-    constructor(confidence_interval, point_estimate, standard_error) {
-        this.confidence_interval = confidence_interval;
-        this.point_estimate = point_estimate;
-        this.standard_error = standard_error;
+    constructor(confidenceInterval, pointEstimate, standardError) {
+        this.confidenceInterval = confidenceInterval;
+        this.pointEstimate = pointEstimate;
+        this.standardError = standardError;
     }
 }
 
@@ -198,7 +201,7 @@ function buildEstimates(distributions, points, cl) {
         return new Estimate(
             new ConfidenceInterval(cl, lb, ub),
             pointEstimate,
-            distribution.stdDev()
+            distribution.stdDev(),
         );
     }
 
@@ -208,7 +211,7 @@ function buildEstimates(distributions, points, cl) {
         toEstimate(points.mad, distributions.medianAbsDev),
         null,
         toEstimate(points.stdDev, distributions.stdDev),
-    )
+    );
 }
 
 export class Slope {
@@ -217,7 +220,7 @@ export class Slope {
         let ys = data.ys;
         let xy = dot(xs, ys);
         let x2 = dot(xs, xs);
-        return xy / x2
+        return xy / x2;
     }
 
     static rSquared(m, data) {
@@ -235,7 +238,7 @@ export class Slope {
             ss_tot = ss_res + (y - y_bar) ** 2;
         }
 
-        return 1 - ss_res / ss_tot
+        return 1 - ss_res / ss_tot;
     }
 }
 
@@ -254,19 +257,25 @@ function calculateEstimates(sample, config) {
 
     let [mean, stdDev, median, mad] = stats(sample);
     let points = {
-        mean, stdDev, median, mad
+        mean,
+        stdDev,
+        median,
+        mad,
     };
 
-    let [distMean, distStdDev, distMedian, distMad] = sample.bootstrap(nResamples, stats);
+    let [distMean, distStdDev, distMedian, distMad] = sample.bootstrap(
+        nResamples,
+        stats,
+    );
     let distributions = {
         mean: distMean,
         slope: null,
         median: distMedian,
         medianAbsDev: distMad,
-        stdDev: distStdDev
+        stdDev: distStdDev,
     };
 
-    let estimates = buildEstimates(distributions, points, cl)
+    let estimates = buildEstimates(distributions, points, cl);
 
     return [distributions, estimates];
 }
@@ -277,14 +286,14 @@ function dot(xs, ys) {
 
 function regression(data, config) {
     let cl = config.confidenceLevel;
-    let distribution = data.bootstrap(config.nResamples, d => Slope.fit(d))
+    let distribution = data.bootstrap(config.nResamples, (d) => Slope.fit(d));
     let point = Slope.fit(data);
     let [lb, ub] = distribution.confidenceInterval(config.confidenceLevel);
     let se = distribution.stdDev();
     return [
         distribution,
-        new Estimate(new ConfidenceInterval(cl, lb, ub), point, se)
-    ]
+        new Estimate(new ConfidenceInterval(cl, lb, ub), point, se),
+    ];
 }
 
 class MeasurementData {
@@ -298,22 +307,27 @@ class MeasurementData {
 
 export async function common(
     id,
-    routine,
+    target,
     config,
     criterion,
     reportContext,
-    parameter
+    parameter,
 ) {
-    criterion.report.benchmarkStart(id, reportContext)
-    let [samplingMode, iters, times] = await routine.sample(id, config, criterion, reportContext, parameter);
+    criterion.report.benchmarkStart(id, reportContext);
+
+    let [iters, times] = await target.sample(
+        id,
+        config,
+        criterion,
+        reportContext,
+        parameter,
+    );
     criterion.report.analysis(id, reportContext);
 
     if (times.some((f) => f === 0)) {
         console.error(
-            "At least one measurement of benchmark {} took zero time per \
-            iteration. This should not be possible. If using iter_custom, please verify \
-            that your routine is correctly measured.",
-            id.title
+            `At least one measurement of benchmark ${id.title} took zero time per iteration.`,
+            `This is unexpected. Missing an \`await\` or something?`
         );
         return;
     }
@@ -324,21 +338,20 @@ export async function common(
     let data = new Data(iters, times);
     let labeledSample = tukey(avgTimes);
 
-    let where = path.join(criterion.outputDirectory, id.fullId);
-    fs.mkdirSync(where, {recursive: true});
-    fs.writeFileSync(path.join(where, 'tukey.json'), JSON.stringify(labeledSample.fences));
-
     let [distributions, estimates] = calculateEstimates(avgTimes, config);
 
-    // if sampling mode is linear
     let [distribution, slope] = regression(data, config);
     estimates.slope = slope;
     distributions.slope = distribution;
 
-    fs.writeFileSync(path.join(where, 'sample.json'), JSON.stringify({samplingMode, iters, times}));
-    fs.writeFileSync(path.join(where, 'estimates.json'), JSON.stringify(estimates));
-
-    let measurementData = new MeasurementData(new Data(iters, times), labeledSample, estimates, distributions);
-    criterion.report.measurementComplete(id, reportContext, measurementData, criterion.measurement)
-    fs.writeFileSync(path.join(where, 'benchmark.json'), JSON.stringify(id));
+    criterion.report.measurementComplete(
+        id,
+        reportContext,
+        new MeasurementData(
+            new Data(iters, times),
+            labeledSample,
+            estimates,
+            distributions,
+        )
+    );
 }
