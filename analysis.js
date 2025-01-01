@@ -19,27 +19,27 @@ function tukey(sample) {
 }
 
 class Percentiles {
-    constructor(xs) {
-        if (xs.length === 0) {
+    constructor(numbers) {
+        if (numbers.length === 0) {
             throw "Can't calculate Percentiles for empty list!";
         }
 
-        this.xs = xs;
+        this.numbers = numbers.toSorted((a, b) => a - b);
     }
 
     at(p) {
         if (p < 0 || p > 100) {
             throw `Undefined percentile: ${p}`;
         }
-        let len = this.xs.length - 1;
+        let len = this.numbers.length - 1;
         if (p === 100) {
-            return this.xs[len];
+            return this.numbers[len];
         }
         let rank = (p / 100) * len;
         let integer = Math.floor(rank);
         let fraction = rank - integer;
-        let floor = this.xs[integer];
-        let ceiling = this.xs[integer + 1];
+        let floor = this.numbers[integer];
+        let ceiling = this.numbers[integer + 1];
 
         return floor + (ceiling - floor) * fraction;
     }
@@ -97,7 +97,7 @@ export class Sample {
     }
 
     percentiles() {
-        return new Percentiles(this.numbers.toSorted((a, b) => a - b));
+        return new Percentiles(this.numbers);
     }
 
     medianAbsDev(median) {
@@ -221,9 +221,6 @@ export class Slope {
     }
 
     static rSquared(m, data) {
-        // let _0 = A::cast(0);
-        // let _1 = A::cast(1);
-        // let m = self.0;
         let xs = data.xs;
         let ys = data.ys;
 
@@ -291,7 +288,7 @@ function regression(data, config) {
 }
 
 class MeasurementData {
-    constructor(data, labeledSample, absoluteEstimates, distributions, comparison) {
+    constructor(data, labeledSample, absoluteEstimates, distributions) {
         this.data = data;
         this.avgTimes = labeledSample;
         this.absoluteEstimates = absoluteEstimates;
@@ -348,7 +345,7 @@ export async function common(
     fs.writeFileSync(path.join(where, 'sample.json'), JSON.stringify({samplingMode, iters, times}));
     fs.writeFileSync(path.join(where, 'estimates.json'), JSON.stringify(estimates));
 
-    let measurementData = new MeasurementData(new Data(iters, times), labeledSample, estimates, distributions, null);
+    let measurementData = new MeasurementData(new Data(iters, times), labeledSample, estimates, distributions);
     criterion.report.measurementComplete(id, reportContext, measurementData, criterion.measurement)
     fs.writeFileSync(path.join(where, 'benchmark.json'), JSON.stringify(id));
 }

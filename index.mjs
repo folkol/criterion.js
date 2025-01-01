@@ -112,9 +112,9 @@ class Function {
 
         criterion.report.warmup(id, reportContext, wu);
 
-        let [wu_elapsed, wu_iters] = await this.warmUp(measurement, wu, parameter);
+        let [elapsed, iters] = await this.warmUp(measurement, wu, parameter);
 
-        let met = wu_elapsed / wu_iters;
+        let met = elapsed / iters;
         let n = config.sampleSize;
 
         let actualSamplingMode = 'linear'; // TODO
@@ -124,7 +124,8 @@ class Function {
 
         criterion.report.measurementStart(id, reportContext, n, expectedNs, totalIters);
 
-        let times = (await this.bench(measurement, mIters, parameter)).map(x => Math.round(x))
+        let rawTimes = await this.bench(measurement, mIters, parameter);
+        let times = rawTimes.map(Math.round)
 
         return [
             actualSamplingMode,
@@ -252,7 +253,7 @@ class Report {
     benchmarkStart(_id, _context) {
     }
 
-    warmup(_id, _context, _warmup_ns) {
+    warmup(_id, _context, _warmupNs) {
     }
 
     analysis(_id, _context) {
@@ -262,8 +263,8 @@ class Report {
         _id,
         _context,
         _sample_count,
-        _estimate_ns,
-        _iter_count,
+        _estimateNs,
+        _iterCount,
     ) {
     }
 
@@ -333,8 +334,8 @@ class CliReport extends Report {
         console.log(`Benchmarking ${id.title}: Analyzing`);
     }
 
-    warmup(id, _context, warmup_ns) {
-        console.log(`Benchmarking ${id.title}: Warming up for ${formatTime(warmup_ns)}`)
+    warmup(id, _context, warmupNs) {
+        console.log(`Benchmarking ${id.title}: Warming up for ${formatTime(warmupNs)}`)
     }
 
     measurementStart(_id, _context, _sample_count, _estimate_ns, _iter_count) {
@@ -345,41 +346,40 @@ class CliReport extends Report {
         )
     }
 
-    measurementComplete(_id, _context, _measurements, _formatter) {
-        let typicalEstimate = _measurements.absoluteEstimates.typical();
+    measurementComplete(id, _context, measurements, formatter) {
+        let typicalEstimate = measurements.absoluteEstimates.typical();
 
-        let id = _id.title;
         console.log(
-            `${id.padEnd(23)} time:`,
-            `[${_formatter.format(typicalEstimate.confidence_interval.lower_bound)}`,
-            _formatter.format(typicalEstimate.point_estimate),
-            `${_formatter.format(typicalEstimate.confidence_interval.upper_bound)}]`
+            `${id.title.padEnd(23)} time:`,
+            `[${formatter.format(typicalEstimate.confidence_interval.lower_bound)}`,
+            formatter.format(typicalEstimate.point_estimate),
+            `${formatter.format(typicalEstimate.confidence_interval.upper_bound)}]`
         )
 
-        if (_measurements.throughput) {
+        if (measurements.throughput) {
             // TODO
         }
 
-        this.outliers(_measurements.avgTimes)
+        this.outliers(measurements.avgTimes)
 
-        let slopeEstimate = _measurements.absoluteEstimates.slope;
+        let slopeEstimate = measurements.absoluteEstimates.slope;
 
         function formatShortEstimate(estimate) {
-            let lb = _formatter.format(estimate.confidence_interval.lower_bound);
-            let ub = _formatter.format(estimate.confidence_interval.upper_bound);
+            let lb = formatter.format(estimate.confidence_interval.lower_bound);
+            let ub = formatter.format(estimate.confidence_interval.upper_bound);
             return `[${lb} ${ub}]`;
         }
 
         if (slopeEstimate) {
             let slop = formatShortEstimate(slopeEstimate);
-            let lb = Slope.rSquared(slopeEstimate.confidence_interval.lower_bound, _measurements.data).toFixed(7);
-            let ub = Slope.rSquared(slopeEstimate.confidence_interval.upper_bound, _measurements.data).toFixed(7);
+            let lb = Slope.rSquared(slopeEstimate.confidence_interval.lower_bound, measurements.data).toFixed(7);
+            let ub = Slope.rSquared(slopeEstimate.confidence_interval.upper_bound, measurements.data).toFixed(7);
             console.log(`slope  ${slop}`, `R^2            [${lb} ${ub}]`)
         }
-        let mean = formatShortEstimate(_measurements.absoluteEstimates.mean);
-        let stdDev = formatShortEstimate(_measurements.absoluteEstimates.stdDev);
-        let median = formatShortEstimate(_measurements.absoluteEstimates.median);
-        let medianAbsDev = formatShortEstimate(_measurements.absoluteEstimates.medianAbsDev);
+        let mean = formatShortEstimate(measurements.absoluteEstimates.mean);
+        let stdDev = formatShortEstimate(measurements.absoluteEstimates.stdDev);
+        let median = formatShortEstimate(measurements.absoluteEstimates.median);
+        let medianAbsDev = formatShortEstimate(measurements.absoluteEstimates.medianAbsDev);
         console.log(`mean   ${mean} std. dev.      ${stdDev}`)
         console.log(`median ${median} med. abs. dev. ${medianAbsDev}`);
     }
