@@ -305,14 +305,7 @@ export async function common(
     parameter
 ) {
     criterion.report.benchmarkStart(id, reportContext)
-    let [samplingMode, iters, times] = await routine.sample(
-        criterion.measurement,
-        id,
-        config,
-        criterion,
-        reportContext,
-        parameter
-    );
+    let [samplingMode, iters, times] = await routine.sample(id, config, criterion, reportContext, parameter);
     criterion.report.analysis(id, reportContext);
 
     if (times.some((f) => f === 0)) {
@@ -320,7 +313,7 @@ export async function common(
             "At least one measurement of benchmark {} took zero time per \
             iteration. This should not be possible. If using iter_custom, please verify \
             that your routine is correctly measured.",
-            id.title()
+            id.title
         );
         return;
     }
