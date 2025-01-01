@@ -48,7 +48,7 @@ group.bench("g", g);
 
 ```
 $ node path/to/my/example-benchmark.mjs
-$ npx generate-report ./criterion/
+$ npx criterion-report ./criterion/
 ```
 
 ## TODO
