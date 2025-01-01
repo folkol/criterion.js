@@ -7,7 +7,7 @@
     "types": "npx -p typescript tsc index.mjs --declaration --allowJs --emitDeclarationOnly"
   },
   "bin": {
-    "criterion-report": "./generate-report.mjs"
+    "criterion-report": "generate-report.mjs"
   },
   "type": "module",
   "keywords": [
