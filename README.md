@@ -17,15 +17,11 @@ Micro-benchmarking is what it is, if your production code isn't executed in a ti
 
 ## How do I get it?
 
-WIP: Not published yet!
-
 ```
 $ npm install (--save-dev) @folkol/criterion
 ```
 
 ## How do I use it?
-
-(WIP: Not published yet!)
 
 1. Create a Criterion instance
 2. Create a benchmark group
