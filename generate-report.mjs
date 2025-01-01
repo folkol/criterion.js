@@ -584,7 +584,7 @@ function listBenchmarks(directory) {
 
 async function main() {
     if (process.argv.length !== 3 || !fs.existsSync(process.argv[2])) {
-        console.error("usage: generate-report path_to_criterion_folder");
+        console.error("usage: npx criterion-report path_to_criterion_folder");
         process.exit(1);
     }
     let outputDir = process.argv[2];
