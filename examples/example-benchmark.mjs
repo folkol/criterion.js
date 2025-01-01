@@ -7,12 +7,12 @@ let criterion = new Criterion({
     warmUpTime: 0.2,
 });
 
-let group1 = criterion.benchmarkGroup("Empty");
+let group1 = criterion.group("Empty");
 
 group1.bench("Empty", () => {});
 group1.bench("Empty (async)", async () => {});
 
-let group2 = criterion.benchmarkGroup("Fibonacci");
+let group2 = criterion.group("Fibonacci");
 group2.bench("Iterative", fibonacciIterative, 15);
 group2.bench("Iterative (async)", fibonacciAsync, 15);
 group2.bench("Recursive", fibonacciRecursive, 15);

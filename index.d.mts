@@ -7,14 +7,14 @@ export class Criterion {
      * Creates an instance of Criterion.
      * @param {Object} configuration - Configuration overrides
      */
-    constructor(configuration: CriterionConfig);
+    constructor(configuration: Partial<CriterionConfig>);
     /**
      * Creates a new benchmark group with a specified name.
-     * Benchmark groups allow grouping of related benchmarks for organization.
+     * Typically alternative implementations of the same thing.
      * @param {string} name - The name of the benchmark group.
      * @returns {BenchmarkGroup} A new BenchmarkGroup instance.
      */
-    benchmarkGroup(name: string): BenchmarkGroup;
+    group(name: string): BenchmarkGroup;
 }
 /**
  * Configuration class for benchmarking settings in Criterion.
@@ -71,12 +71,28 @@ declare class CriterionConfig {
      * @default 3
      */
     warmUpTime: number;
+    /**
+     * Directory where to store the output files.
+     * @type {string}
+     * @default criterion
+     */
+    outputDirectory: string;
 }
 /**
- * Class representing a group of related benchmarks.
- * Benchmarks within a group share a common name and are managed together.
+ * A group of related benchmarks. Typically alternative implementations of the same function.
  */
 declare class BenchmarkGroup {
+    /**
+     * Creates an instance of BenchmarkGroup.
+     * @param {Criterion} criterion - The Criterion instance managing the benchmark group.
+     * @param {string} name - The name of the benchmark group.
+     */
+    constructor(criterion: Criterion, name: string);
+    /**
+     * The Criterion instance managing this benchmark group.
+     * @type {Criterion}
+     */
+    criterion: Criterion;
     /**
      * The name of the benchmark group.
      * @type {string}
@@ -84,11 +100,10 @@ declare class BenchmarkGroup {
     name: string;
     /**
      * Adds a new benchmark to the group and schedules it for execution.
-     * The benchmark is defined by its name and function, and additional parameters can be passed.
      * @param {string} name - The name of the benchmark.
      * @param {Function} f - The function to be benchmarked.
      * @param {...any} rest - Additional parameters for the benchmark function.
      */
-    bench(name: string, f: globalThis.Function, ...rest: any[]): void;
+    bench(name: string, f: (...params: any[]) => any, ...rest: any[]): void;
 }
 export {};

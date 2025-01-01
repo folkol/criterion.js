@@ -295,7 +295,7 @@ export class Criterion {
      * @param {string} name - The name of the benchmark group.
      * @returns {BenchmarkGroup} A new BenchmarkGroup instance.
      */
-    benchmarkGroup(name) {
+    group(name) {
         return new BenchmarkGroup(this, name);
     }
 
