@@ -231,9 +231,6 @@ class Report {
         _formatter,
     ) {
     }
-
-    final_summary(_context) {
-    }
 }
 
 function short(n) {
@@ -311,9 +308,9 @@ class CliReport extends Report {
         let id = _id.title;
         console.log(
             `${id.padEnd(23)} time:`,
-            `[${_formatter.format_value(typicalEstimate.confidence_interval.lower_bound)}`,
-            _formatter.format_value(typicalEstimate.point_estimate),
-            `${_formatter.format_value(typicalEstimate.confidence_interval.upper_bound)}]`
+            `[${_formatter.format(typicalEstimate.confidence_interval.lower_bound)}`,
+            _formatter.format(typicalEstimate.point_estimate),
+            `${_formatter.format(typicalEstimate.confidence_interval.upper_bound)}]`
         )
 
         if (_measurements.throughput) {
@@ -325,8 +322,8 @@ class CliReport extends Report {
         let slopeEstimate = _measurements.absoluteEstimates.slope;
 
         function formatShortEstimate(estimate) {
-            let lb = _formatter.format_value(estimate.confidence_interval.lower_bound);
-            let ub = _formatter.format_value(estimate.confidence_interval.upper_bound);
+            let lb = _formatter.format(estimate.confidence_interval.lower_bound);
+            let ub = _formatter.format(estimate.confidence_interval.upper_bound);
             return `[${lb} ${ub}]`;
         }
 
@@ -380,34 +377,6 @@ class CliReport extends Report {
         print(him, "high mild");
         print(his, "high severe");
     };
-
-    final_summary(_context) {
-
-    }
-}
-
-
-function listExistingBenchmarks(directory) {
-    const walkSync = (dir, callback) => {
-        const files = fs.readdirSync(dir);
-        files.forEach((file) => {
-            let filepath = path.join(dir, file);
-            const stats = fs.statSync(filepath);
-            if (stats.isDirectory()) {
-                walkSync(filepath, callback);
-            } else if (stats.isFile() && file === 'benchmark.json') {
-                callback(filepath);
-            }
-        });
-    };
-    let tests = [];
-    walkSync(directory, file => {
-        let blob = fs.readFileSync(file);
-        let {groupId, functionId, valueString, throughput} = JSON.parse(blob);
-        let id = new InternalBenchmarkId(groupId, functionId, valueString, throughput);
-        return tests.push(id);
-    })
-    return tests;
 }
 
 class ReportLink {
@@ -600,7 +569,7 @@ function pdf_small(id, context, formatter, measurements, size) {
     let [lost, lomt, himt, hist] = measurements.avgTimes.fences;
     let scaled_numbers = [...avg_times.sample.numbers];
     let typical = Math.max(...scaled_numbers);
-    let unit = formatter.scale_values(typical, scaled_numbers)
+    let unit = formatter.scaleValues(typical, scaled_numbers)
     let scaled_avg_times = new Sample(scaled_numbers);
     let mean = scaled_avg_times.mean();
     let [xs, ys, mean_y] = sweep_and_estimate(scaled_avg_times, 500, null, mean);
@@ -657,13 +626,13 @@ function regression(id, context, formatter, measurements, size) {
 
     let [max_iters, typical] = [Math.max(...data.xs), Math.max(...data.ys)];
     let scaled_numbers = [...data.ys];
-    let unit = formatter.scale_values(typical, scaled_numbers);
+    let unit = formatter.scaleValues(typical, scaled_numbers);
 
     let point_estimate = Slope.fit(measurements.data);
 
     let scaled_points = [point_estimate * max_iters, lb * max_iters, ub * max_iters];
 
-    formatter.scale_values(typical, scaled_points);
+    formatter.scaleValues(typical, scaled_points);
 
     let [point, lb2, ub2] = scaled_points;
 
@@ -709,10 +678,10 @@ function regression_small(id, context, formatter, measurements, size) {
     let data = measurements.data;
     let [max_iters, typical] = [Math.max(...data.xs), Math.max(...data.ys)];
     let scaled_numbers = [...data.ys];
-    let unit = formatter.scale_values(typical, scaled_numbers);
+    let unit = formatter.scaleValues(typical, scaled_numbers);
     let point_estimate = Slope.fit(measurements.data);
     let scaled_points = [point_estimate * max_iters, lb * max_iters, ub * max_iters];
-    formatter.scale_values(typical, scaled_points);
+    formatter.scaleValues(typical, scaled_points);
     let [point, lb2, ub2] = scaled_points;
     let exponent = 3 * Math.floor(Math.log10(max_iters) / 3)
     let x_scale = 10 ** -exponent;
@@ -762,7 +731,7 @@ function gnuplot(script) {
 }
 
 function pdf(id, context, formatter, measurements, size) {
-    throw 'pdf not implemented yet'
+    throw 'WIP'
 
     let iterCounts = measurements.data.xs;
     let maxIters = Math.max(...iterCounts);
@@ -773,7 +742,7 @@ function pdf(id, context, formatter, measurements, size) {
     let [lost, lomt, himt, hist] = measurements.avgTimes.fences;
     let scaled_numbers = [...avg_times.sample.numbers];
     let typical = Math.max(...scaled_numbers);
-    let unit = formatter.scale_values(typical, scaled_numbers)
+    let unit = formatter.scaleValues(typical, scaled_numbers)
     let scaled_avg_times = new Sample(scaled_numbers);
     let mean = scaled_avg_times.mean();
     let [xs, ys, mean_y] = sweep_and_estimate(scaled_avg_times, 500, null, mean);
@@ -879,9 +848,9 @@ class HtmlReport extends Report {
 
 
         let time_interval = est =>
-            new HtmlConfidenceInterval(_formatter.format_value(est.confidence_interval.lower_bound),
-                _formatter.format_value(est.point_estimate),
-                _formatter.format_value(est.confidence_interval.upper_bound));
+            new HtmlConfidenceInterval(_formatter.format(est.confidence_interval.lower_bound),
+                _formatter.format(est.point_estimate),
+                _formatter.format(est.confidence_interval.upper_bound));
 
 
         let data = _measurements.data;
@@ -927,37 +896,6 @@ class HtmlReport extends Report {
 
         let output = renderTemplate('benchmark_report', context);
         fs.writeFileSync(report_path, output);
-    }
-
-    final_summary(_context) {
-        let outputDir = _context.outputDirectory;
-
-        // TODO verify dir
-        let benchmarks = listExistingBenchmarks(outputDir);
-        benchmarks.sort((a, b) => a.fullId.localeCompare(b.fullId));
-        console.log('found ids', benchmarks)
-        let idGroups = {};
-        for (let id of benchmarks) {
-            let group = idGroups[id.groupId] || [];
-            group.push(id);
-            idGroups[id.groupId] = group;
-        }
-
-        console.log('groups', idGroups);
-        let groups = Object.values(idGroups).map(group => HtmlBenchmarkGroup.fromGroup(outputDir, group));
-        groups.sort((a, b) => a.groupReport.name.localeCompare(b.groupReport.name));
-        console.log(groups)
-
-        let reportDir = path.join(outputDir, 'report');
-        fs.mkdirSync(reportDir, {recursive: true});
-        let reportPath = path.join(reportDir, 'index.html')
-        let fragments = ['<!doctype html><body>'];
-        for (let group of groups) {
-            fragments.push(`<p>${group.groupReport.name}</p>`)
-        }
-        fragments.push('</body>');
-        fs.writeFileSync(reportPath, fragments.join('\n'));
-        console.log('write report!', reportPath);
     }
 
     generate_plots(_id, _context, _formatter, _measurements) {
@@ -1059,7 +997,7 @@ class HtmlReport extends Report {
     }
 }
 
-class BenchmarkConfig {
+class CriterionConfig {
     confidenceLevel = 0.95;
     measurementTime = 5;
     noiseThreshold = 0.01;
@@ -1076,44 +1014,33 @@ class BenchmarkConfig {
 }
 
 export class Reporter extends Report {
-    constructor(cli, html) {
+    constructor(...reporters) {
         super();
-        this.cli = cli;
-        this.html = html;
+        this.reporters = reporters;
     }
 
     benchmarkStart(id, ctx) {
-        this.cli.benchmarkStart(id, ctx);
-        this.html.benchmarkStart(id, ctx);
+        this.reporters.forEach(reporter => reporter.benchmarkStart(id, ctx))
     }
 
-    analysis(id, _context) {
-        this.cli.analysis(id, _context);
-        this.html.analysis(id, _context);
+    analysis(id, context) {
+        this.reporters.forEach(reporter => reporter.analysis(id, context))
     }
 
-    warmup(id, _context, wu) {
-        this.cli.warmup(id, _context, wu);
-        this.html.warmup(id, _context, wu);
+    warmup(id, context, wu) {
+        this.reporters.forEach(reporter => reporter.warmup(id, context, wu))
     }
 
-    measurementStart(_id, _context, _sample_count, _estimate_ns, _iter_count) {
-        this.cli.measurementStart(_id, _context, _sample_count, _estimate_ns, _iter_count);
-        this.html.measurementStart(_id, _context, _sample_count, _estimate_ns, _iter_count);
+    measurementStart(id, context, sampleCount, estimateNs, iterCount) {
+        this.reporters.forEach(reporter => reporter.measurementStart(id, context, sampleCount, estimateNs, iterCount))
     }
 
-    measurementComplete(_id, _context, _measurements, _formatter) {
-        this.cli.measurementComplete(_id, _context, _measurements, _formatter);
-        this.html.measurementComplete(_id, _context, _measurements, _formatter);
-    }
-
-    final_summary(_context) {
-        this.cli.final_summary(_context);
-        this.html.final_summary(_context);
+    measurementComplete(id, context, measurements, formatter) {
+        this.reporters.forEach(reporter => reporter.measurementComplete(id, context, measurements, formatter))
     }
 }
 
-class Walltime {
+class WallTime {
     start() {
         return performance.now();
     }
@@ -1122,7 +1049,7 @@ class Walltime {
         return performance.now() - begin;
     }
 
-    scale_values(ns, values) {
+    scaleValues(ns, values) {
         let factor, unit;
         if (ns < 10 ** 0) {
             [factor, unit] = [10 ** 3, "ps"];
@@ -1141,9 +1068,9 @@ class Walltime {
         return unit;
     }
 
-    format_value(value) {
+    format(value) {
         let values = [value];
-        let unit = this.scale_values(value, values);
+        let unit = this.scaleValues(value, values);
         return `${short(values[0]).padEnd(6)} ${unit}`
     }
 }
@@ -1155,25 +1082,15 @@ export class Criterion {
     report = new Reporter(new CliReport, new HtmlReport);
     filter = null;
     outputDirectory = 'criterion';
-    all_directories = new Set();
-    all_titles = new Set();
-    measurement = new Walltime;
+    measurement = new WallTime;
 
     constructor(config) {
-        this.config = Object.assign(new BenchmarkConfig, config);
+        this.config = Object.assign(new CriterionConfig, config);
     }
 
     benchmarkGroup(name) {
         return new BenchmarkGroup(this, name);
     }
-
-    finalSummary() {
-        let reportContext = {
-            outputDirectory: this.outputDirectory,
-        }
-        this.report.final_summary(reportContext);
-    }
-
 
     async runTask(task) {
         if (this.running >= this.concurrency) {

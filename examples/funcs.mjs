@@ -1,12 +1,12 @@
-export function fibonacciSlow(n) {
+export function fibonacciRecursive(n) {
     if (n < 2) {
         return 1;
     }
-    return fibonacciSlow(n - 2) + fibonacciSlow(n - 1);
+    return fibonacciRecursive(n - 2) + fibonacciRecursive(n - 1);
 }
 
-export async function fibonacciFast(n) {
-    let a = await Promise.resolve(1)
+export async function fibonacciAsync(n) {
+    let a = await n
     let b = 1;
     while (n > 1) {
         let tmp = a + b;
@@ -17,7 +17,7 @@ export async function fibonacciFast(n) {
     return b;
 }
 
-export function fibonacciFast2(n) {
+export function fibonacciIterative(n) {
     let a = 1;
     let b = 1;
     while (n > 1) {

@@ -1,22 +1,20 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-class Tukey {
-    static classify(sample) {
-        let [q1, _, q3] = sample.percentiles().quartiles();
-        let iqr = q3 - q1;
-        let k_m = 1.5;
-        let k_s = 3;
+function tukey(sample) {
+    let [q1, _, q3] = sample.percentiles().quartiles();
+    let iqr = q3 - q1;
+    let k_m = 1.5;
+    let k_s = 3;
 
-        return {
-            fences: [
-                q1 - k_s * iqr,
-                q1 - k_m * iqr,
-                q3 + k_m * iqr,
-                q3 + k_s * iqr,
-            ],
-            sample
-        }
+    return {
+        fences: [
+            q1 - k_s * iqr,
+            q1 - k_m * iqr,
+            q3 + k_m * iqr,
+            q3 + k_s * iqr,
+        ],
+        sample
     }
 }
 
@@ -68,7 +66,7 @@ class Distribution {
 
     confidenceInterval(cl) {
         if (cl <= 0 || cl >= 1) {
-            throw 'Unreasonable cl!';
+            throw 'Unsupported cl!';
         }
         let percentiles = new Sample(this.numbers).percentiles();
         return [percentiles.at(50 * (1 - cl)), percentiles.at(50 * (1 + cl))]
@@ -107,7 +105,6 @@ export class Sample {
         return new Sample(absDevs).percentiles().median() * 1.4826;
     }
 
-
     bootstrap(nResamples, stats) {
         function resample(numbers) {
             return new Sample(numbers.map(() => numbers[Math.floor(Math.random() * numbers.length)]));
@@ -130,19 +127,6 @@ export class Sample {
             distMedian,
             distMad,
         ];
-    }
-
-    bootstrap2(nResamples, stats) {
-        function resample(numbers) {
-            return numbers.map(() => numbers[Math.floor(Math.random() * numbers.length)]);
-        }
-
-        let stat = new Distribution;
-        for (let i = 0; i < nResamples; i++) {
-            let stat = stats(resample(this.numbers));
-            stat.push(stat);
-        }
-        return stat;
     }
 }
 
@@ -168,12 +152,12 @@ class Data {
             return new Data(outXs, outYs);
         }
 
-        let fits = new Distribution;
+        let slopes = new Distribution;
         for (let i = 0; i < nResamples; i++) {
-            let fit = stats(resample(this.xs, this.ys));
-            fits.push(fit);
+            let slope = stats(resample(this.xs, this.ys));
+            slopes.push(slope);
         }
-        return fits;
+        return slopes;
     }
 
 }
@@ -276,7 +260,6 @@ function calculateEstimates(sample, config) {
         mean, stdDev, median, mad
     };
 
-    // add elapsed logging?
     let [distMean, distStdDev, distMedian, distMad] = sample.bootstrap(nResamples, stats);
     let distributions = {
         mean: distMean,
@@ -348,9 +331,8 @@ export async function common(
     let timeAverages = iters.map((n, i) => times[i] / n);
     let avgTimes = new Sample(timeAverages);
 
-    // let data = new Data(iters, times);
     let data = new Data(iters, times);
-    let labeledSample = Tukey.classify(avgTimes);
+    let labeledSample = tukey(avgTimes);
 
     let where = path.join(criterion.outputDirectory, id.fullId);
     fs.mkdirSync(where, {recursive: true});
