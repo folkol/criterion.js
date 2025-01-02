@@ -654,28 +654,14 @@ function generateGroupReport(group, outputDirectory) {
     let groupId = group.groupReport.name;
     let plot_ctx = new PlotContext(groupId, outputDirectory, null, false);
     let reportDir = path.join(outputDirectory, groupId, 'report');
-    console.log('reportDir', reportDir)
     fs.mkdirSync(reportDir, {recursive: true})
 
-//
-//         try_else_return!(
-//             {
-//                 let mut report_dir = report_context.output_directory.clone();
-//                 report_dir.push(id.as_directory_name());
-//                 report_dir.push("report");
-//                 fs::mkdirp(&report_dir)
-//             },
-//             || {}
-//         );
-//
     let plotter = new GnuPlotter;
     // plotter.violin(plot_ctx)
 
 
 //         self.plotter.borrow_mut().violin(plot_ctx, formatter, data);
 //
-
-
 //         let value_types: Vec<_> = data.iter().map(|&&(id, _)| id.value_type()).collect();
 //         let mut line_path = None;
 //
@@ -699,38 +685,22 @@ function generateGroupReport(group, outputDirectory) {
 //             })
 //             .collect();
 //
-    console.log('groupReport', group.groupReport)
-        let context = {
-            group_id: group.groupReport.name,
-            groupReport: group.groupReport,
+    let context = {
+        group_id: group.groupReport.name,
+        groupReport: group.groupReport,
 
-            thumbnail_width: 450,
-            thumbnail_height: 300,
+        thumbnail_width: 450,
+        thumbnail_height: 300,
 
-            // violin_plot: Some(plot_ctx.violin_path().to_string_lossy().into_owned()),
-            // line_chart: line_path.map(|p| p.to_string_lossy().into_owned()),
+        // violin_plot: Some(plot_ctx.violin_path().to_string_lossy().into_owned()),
+        // line_chart: line_path.map(|p| p.to_string_lossy().into_owned()),
 
-            benchmarks: group.functionLinks,
-        };
-        console.log(context);
+        benchmarks: group.functionLinks,
+    };
 
-
-//
-        let report_path = path.join(reportDir, 'index.html');
-//         report_path.push(id.as_directory_name());
-//         report_path.push("report");
-//         report_path.push("index.html");
-//         debug_context(&report_path, &context);
-//
+    let report_path = path.join(reportDir, 'index.html');
     let report = renderTemplate('summary_report', context);
     fs.writeFileSync(report_path, report)
-//         let text = self
-//             .templates
-//             .render("summary_report", &context)
-//             .expect("Failed to render summary report template");
-//         try_else_return!(fs::save_string(&text, &report_path,), || {});
-//     }
-// }
 }
 
 async function main() {
