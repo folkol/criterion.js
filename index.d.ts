@@ -7,7 +7,7 @@ export class Criterion {
      * Creates an instance of Criterion.
      * @param {Object} configuration - Configuration overrides
      */
-    constructor(configuration: Partial<CriterionConfig>);
+    constructor(configuration?: Partial<CriterionConfig>);
     /**
      * Creates a new benchmark group with a specified name.
      * Typically alternative implementations of the same thing.
