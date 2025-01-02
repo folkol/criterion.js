@@ -231,7 +231,6 @@ class ReportLink {
     }
 
     static function(outputDir, groupId, f) {
-        console.log('func', outputDir, groupId, f)
         let pathOrNull = path.join(outputDir, groupId, f);
         return new ReportLink(f, pathOrNull);
     }

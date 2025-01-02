@@ -314,7 +314,6 @@ function violin(id, outputDirectory, measurements) {
     let scale = [1.0];
     let unit = scaleValues((min + max) / 2, scale);
 
-    console.log(outputDirectory, id, id.directoryName)
     let figurePath = path.join(
         outputDirectory,
         id,
@@ -380,11 +379,11 @@ function gnuplot(script) {
             console.log("[DEBUG] Gnuplot stdout");
             console.log('======================')
             console.log(result.stdout.toString());
-            console.log('======================')
-            console.log("[DEBUG] Gnuplot stderr");
-            console.log('======================')
+            console.error('======================')
+            console.error("[DEBUG] Gnuplot stderr");
+            console.error('======================')
             console.error(result.stderr.toString());
-            console.log('======================')
+            console.error('======================')
         }
         console.error("Gnuplot exit code:", result.status);
         process.exit(1)

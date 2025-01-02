@@ -15,15 +15,15 @@ For each of your benchmarks, it does something like this:
 
 Micro-benchmarking is what it is, if your production code isn't executed in a tight loop isolated from the outside world the results from these test might not apply to the real world.
 
+### Gnuplot
+
+[Gnuplot](https://gnuplot.sourceforge.net) is needed for generating the HTML report.
+
 ## How do I get it?
 
 ```
 $ npm install (--save-dev) @folkol/criterion
 ```
-
-### Gnuplot
-
-[Gnuplot](https://gnuplot.sourceforge.net) is needed for generating the HTML report.
 
 ## How do I use it?
 
