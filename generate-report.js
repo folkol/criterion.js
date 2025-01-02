@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import {BenchmarkId, group,} from "./index.js";
+import {BenchmarkId} from "./index.js";
 import {renderTemplate} from "./templates.js";
 import {Sample, Slope} from "./analysis.js";
 import child_process from "node:child_process";
@@ -293,14 +293,8 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
 
 function violin(id, outputDirectory, measurements) {
     let allCurves = Object.values(measurements.measurements).map(x => new Sample(x.avgTimes.sample.numbers));
-    console.log(allCurves);
 
-// let path = PathBuf::from(&path);
-//     let all_curves_vec = all_curves.iter().rev().cloned().collect::<Vec<_>>();
-//     let all_curves: &[&(&BenchmarkId, Vec<f64>)] = &all_curves_vec;
-//
     let kdes = allCurves.map(avgTimes => {
-        console.log('sweepAndEstimate', avgTimes)
         let [xs, ys] = sweepAndEstimate(avgTimes, 500, null, avgTimes[0]);
         let yMax = Math.max(...ys);
         let ysNormalized = ys.map(y => y / yMax);
@@ -308,22 +302,6 @@ function violin(id, outputDirectory, measurements) {
     });
 
     let xs = kdes.flatMap(([xs, _]) => xs).filter(x => x > 0.)
-
-
-//     let kdes = all_curves
-//         .iter()
-//         .map(|&(_, sample)| {
-//             let (x, mut y) = kde::sweep(Sample::new(sample), KDE_POINTS, None);
-//             let y_max = Sample::new(&y).max();
-//             for y in y.iter_mut() {
-//                 *y /= y_max;
-//             }
-//
-//             (x, y)
-//         })
-//         .collect::<Vec<_>>();
-
-
     let [min, max] = [xs[0], xs[0]];
     for (let e of xs) {
         if (e < min) {
@@ -333,8 +311,8 @@ function violin(id, outputDirectory, measurements) {
         }
     }
 
-    let one = [1.0];
-    let unit = scaleValues((min + max) / 2, one);
+    let scale = [1.0];
+    let unit = scaleValues((min + max) / 2, scale);
 
     console.log(outputDirectory, id, id.directoryName)
     let figurePath = path.join(
@@ -351,12 +329,10 @@ function violin(id, outputDirectory, measurements) {
         plotCommands.push(plotCommand);
     }
     let plotCommand = 'plot ' + plotCommands.join(', ')
-    console.log('plotCommand', plotCommand)
 
     let funcs = Object.keys(measurements.measurements);
-    console.log('funcs', funcs);
     let yTics = [];
-    for(let i = 0; i < funcs.length; i++) {
+    for (let i = 0; i < funcs.length; i++) {
         yTics.push(`'${funcs[i]}' ${i + 0.5}`);
     }
 
@@ -364,7 +340,7 @@ function violin(id, outputDirectory, measurements) {
 set title 'Fibonacci: Violin plot'
 set xtics nomirror
 set xlabel 'Average time (${unit})'
-set xrange [0:${max * one[0]}]
+set xrange [0:${max * scale[0]}]
 set grid xtics
 set ytics nomirror (${yTics.join(', ')})
 set ylabel 'Benchmark'
@@ -378,7 +354,7 @@ ${plotCommand}\n`;
         let [xs, ys] = kdes[i];
         let ys1 = ys.map(y => i2 + y * .45);
         let ys2 = ys.map(y => i2 - y * .45);
-        let xScaled = xs.map(x => x * one[0]);
+        let xScaled = xs.map(x => x * scale[0]);
         for (let [x, y1, y2] of xScaled.map((x, i) => [x, ys1[i], ys2[i]])) {
             script += `${x} ${y1} ${y2}\n`;
         }
@@ -678,8 +654,6 @@ function listBenchmarks(directory) {
 }
 
 function generateGroupReport(group, outputDirectory) {
-    // console.log('generateGroupReport', JSON.stringify(group, undefined, 4));
-
     let groupId = group.groupReport.name;
     let plot_ctx = new PlotContext(groupId, outputDirectory, null, false);
     let reportDir = path.join(outputDirectory, groupId, 'report');
@@ -688,32 +662,6 @@ function generateGroupReport(group, outputDirectory) {
     let plotter = new GnuPlotter;
     plotter.violin(plot_ctx, group)
 
-
-//         self.plotter.borrow_mut().violin(plot_ctx, formatter, data);
-//
-//         let value_types: Vec<_> = data.iter().map(|&&(id, _)| id.value_type()).collect();
-//         let mut line_path = None;
-//
-//         if value_types.iter().all(|x| x == &value_types[0]) {
-//             if let Some(value_type) = value_types[0] {
-//                 let values: Vec<_> = data.iter().map(|&&(id, _)| id.as_number()).collect();
-//                 if values.iter().any(|x| x != &values[0]) {
-//                     self.plotter
-//                         .borrow_mut()
-//                         .line_comparison(plot_ctx, formatter, data, value_type);
-//                     line_path = Some(plot_ctx.line_comparison_path());
-//                 }
-//             }
-//         }
-//
-//         let path_prefix = if full_summary { "../.." } else { "../../.." };
-//         let benchmarks = data
-//             .iter()
-//             .map(|&&(id, _)| {
-//                 IndividualBenchmark::from_id(&report_context.output_directory, path_prefix, id)
-//             })
-//             .collect();
-//
     let context = {
         group_id: group.groupReport.name,
         groupReport: group.groupReport,
