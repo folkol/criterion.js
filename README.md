@@ -57,7 +57,6 @@ $ npx criterion-report ./criterion/
 
 ## TODO
 
-- More plots
-- Create group reports
+- More plots!
 - Port more bench functions from Criterion.rs (Parameterized tests, tests of functions that consume their input, etc.)
 - Separate report generation into its own package?
