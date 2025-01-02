@@ -77,23 +77,21 @@ class PlotData {
 }
 
 class GnuPlotter {
-    process_list = [];
-
     pdf(ctx, data) {
         let size = ctx.size;
-        this.process_list.push(
-            ctx.isThumbnail
-                ? pdfSmall(ctx.id, ctx.outputDirectory, data.measurements, size)
-                : pdf(ctx.id, ctx.outputDirectory, data.measurements, size),
-        );
+        ctx.isThumbnail
+            ? pdfSmall(ctx.id, ctx.outputDirectory, data.measurements, size)
+            : pdf(ctx.id, ctx.outputDirectory, data.measurements, size);
     }
 
     regression(ctx, data) {
-        this.process_list.push(
-            ctx.isThumbnail
-                ? regressionSmall(ctx.id, ctx.outputDirectory, data.measurements, ctx.size)
-                : regression(ctx.id, ctx.outputDirectory, data.measurements, ctx.size),
-        );
+        ctx.isThumbnail
+            ? regressionSmall(ctx.id, ctx.outputDirectory, data.measurements, ctx.size)
+            : regression(ctx.id, ctx.outputDirectory, data.measurements, ctx.size);
+    }
+
+    violin(ctx, data) {
+        violin(ctx.id, ctx.outputDirectory, data.measurements, ctx.size)
     }
 }
 
@@ -293,6 +291,68 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
     gnuplot(script);
 }
 
+function violin(id, outputDirectory, measurements, size) {
+    throw 'WIP'
+    let slopeEstimate = measurements.absoluteEstimates.slope;
+    let slopeDist = measurements.distributions.slope;
+    let [lb, ub] = confidenceInterval(
+        new Sample(slopeDist.numbers).percentiles(),
+        slopeEstimate.confidenceInterval.confidenceLevel,
+    );
+    let data = measurements.data;
+    let [max_iters, typical] = [Math.max(...data.xs), Math.max(...data.ys)];
+    let scaled_numbers = [...data.ys];
+    let unit = scaleValues(typical, scaled_numbers);
+    let point_estimate = Slope.fit(measurements.data);
+    let scaled_points = [
+        point_estimate * max_iters,
+        lb * max_iters,
+        ub * max_iters,
+    ];
+    scaleValues(typical, scaled_points);
+    let [point, lb2, ub2] = scaled_points;
+    let exponent = 3 * Math.floor(Math.log10(max_iters) / 3);
+    let x_scale = 10 ** -exponent;
+    let x_label =
+        exponent === 0 ? "Iterations" : `Iterations (x 10^${exponent})`;
+
+    let figurePath = path.join(
+        outputDirectory,
+        id.directoryName,
+        "report",
+        "regression_small.svg",
+    );
+
+    let script = `set output '${figurePath}'
+set xtics nomirror 
+set xlabel '${x_label}'
+set grid xtics
+set ytics nomirror 
+set ylabel 'Total sample time (${unit})'
+set grid ytics
+set key off
+set terminal svg dynamic dashed size 450, 300 font 'Helvetica'
+unset bars
+plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample', \
+     '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Linear regression', \
+     '-' using 1:2:3 with filledcurves fillstyle solid 0.25 noborder lc rgb '#1f78b4' title 'Confidence interval'    
+`;
+
+    for (let [x, y] of data.xs.map((x, i) => [
+        x * x_scale,
+        scaled_numbers[i],
+    ])) {
+        script += `${x} ${y} 0\n`;
+    }
+    script += "e\n";
+
+    script += `0 0\n`;
+    script += `${max_iters * x_scale} ${point}\n`;
+    script += "e\n";
+
+    gnuplot(script);
+}
+
 function gnuplot(script) {
     let result = child_process.spawnSync("gnuplot", [], {input: script});
     if (result.error) {
@@ -300,7 +360,7 @@ function gnuplot(script) {
         process.exit(1);
     } else if (result.status !== 0) {
         console.error("Failed to render plots");
-        if(process.env.CRITERION_DEBUG) {
+        if (process.env.CRITERION_DEBUG) {
             console.log('======================')
             console.log('[DEBUG] Gnuplot script')
             console.log('======================')
@@ -582,6 +642,97 @@ function listBenchmarks(directory) {
     return benchmarks;
 }
 
+function generateGroupReport(group, outputDirectory) {
+//     fn generate_summary(
+//         &self,
+//         id: &BenchmarkId,
+//         data: &[&(&BenchmarkId, Vec<f64>)],
+//         report_context: &ReportContext,
+//         formatter: &dyn ValueFormatter,
+//         full_summary: bool,
+//     ) {
+    let groupId = group.groupReport.name;
+    let plot_ctx = new PlotContext(groupId, outputDirectory, null, false);
+    let reportDir = path.join(outputDirectory, groupId, 'report');
+    console.log('reportDir', reportDir)
+    fs.mkdirSync(reportDir, {recursive: true})
+
+//
+//         try_else_return!(
+//             {
+//                 let mut report_dir = report_context.output_directory.clone();
+//                 report_dir.push(id.as_directory_name());
+//                 report_dir.push("report");
+//                 fs::mkdirp(&report_dir)
+//             },
+//             || {}
+//         );
+//
+    let plotter = new GnuPlotter;
+    // plotter.violin(plot_ctx)
+
+
+//         self.plotter.borrow_mut().violin(plot_ctx, formatter, data);
+//
+
+
+//         let value_types: Vec<_> = data.iter().map(|&&(id, _)| id.value_type()).collect();
+//         let mut line_path = None;
+//
+//         if value_types.iter().all(|x| x == &value_types[0]) {
+//             if let Some(value_type) = value_types[0] {
+//                 let values: Vec<_> = data.iter().map(|&&(id, _)| id.as_number()).collect();
+//                 if values.iter().any(|x| x != &values[0]) {
+//                     self.plotter
+//                         .borrow_mut()
+//                         .line_comparison(plot_ctx, formatter, data, value_type);
+//                     line_path = Some(plot_ctx.line_comparison_path());
+//                 }
+//             }
+//         }
+//
+//         let path_prefix = if full_summary { "../.." } else { "../../.." };
+//         let benchmarks = data
+//             .iter()
+//             .map(|&&(id, _)| {
+//                 IndividualBenchmark::from_id(&report_context.output_directory, path_prefix, id)
+//             })
+//             .collect();
+//
+    console.log('groupReport', group.groupReport)
+        let context = {
+            group_id: group.groupReport.name,
+            groupReport: group.groupReport,
+
+            thumbnail_width: 450,
+            thumbnail_height: 300,
+
+            // violin_plot: Some(plot_ctx.violin_path().to_string_lossy().into_owned()),
+            // line_chart: line_path.map(|p| p.to_string_lossy().into_owned()),
+
+            benchmarks: group.functionLinks,
+        };
+        console.log(context);
+
+
+//
+        let report_path = path.join(reportDir, 'index.html');
+//         report_path.push(id.as_directory_name());
+//         report_path.push("report");
+//         report_path.push("index.html");
+//         debug_context(&report_path, &context);
+//
+    let report = renderTemplate('summary_report', context);
+    fs.writeFileSync(report_path, report)
+//         let text = self
+//             .templates
+//             .render("summary_report", &context)
+//             .expect("Failed to render summary report template");
+//         try_else_return!(fs::save_string(&text, &report_path,), || {});
+//     }
+// }
+}
+
 async function main() {
     if (process.argv.length !== 3 || !fs.existsSync(process.argv[2])) {
         console.error("usage: npx criterion-report path_to_criterion_folder");
@@ -619,6 +770,10 @@ async function main() {
     );
     groups.sort((a, b) => a.groupReport.name.localeCompare(b.groupReport.name));
 
+    for (let group of groups) {
+        generateGroupReport(group, outputDir);
+    }
+
     let reportDir = path.join(outputDir, "report");
     fs.mkdirSync(reportDir, {recursive: true});
     let reportPath = path.join(reportDir, "index.html");
@@ -627,8 +782,6 @@ async function main() {
         reportPath,
         renderTemplate("index", {
             groups,
-            title: "my report",
-            content: "wat?",
         }),
     );
 

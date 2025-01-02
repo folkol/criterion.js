@@ -214,8 +214,8 @@ class ReportLink {
 
     static group(outputDir, groupId) {
         let reportPath = path.join(outputDir, groupId, "report", "index.html");
-        let pathOrNull = fs.existsSync(reportPath) ? reportPath : null;
-        return new ReportLink(groupId, pathOrNull);
+        // let pathOrNull = fs.existsSync(reportPath) ? reportPath : null;
+        return new ReportLink(groupId, reportPath);
     }
 
     static individual(outputDir, id) {
@@ -231,8 +231,7 @@ class ReportLink {
     }
 
     static function(outputDir, groupId, f) {
-        let reportPath = path.join(outputDir, groupId, f);
-        let pathOrNull = fs.existsSync(reportPath) ? reportPath : null;
+        let pathOrNull = path.join(outputDir, groupId, f);
         return new ReportLink(f, pathOrNull);
     }
 }
