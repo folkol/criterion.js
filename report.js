@@ -231,6 +231,7 @@ class ReportLink {
     }
 
     static function(outputDir, groupId, f) {
+        console.log('func', outputDir, groupId, f)
         let pathOrNull = path.join(outputDir, groupId, f);
         return new ReportLink(f, pathOrNull);
     }
@@ -244,17 +245,19 @@ class BenchmarkValueGroup {
 }
 
 export class HtmlBenchmarkGroup {
-    constructor(groupReport, functionLinks, valueLinks, individualLinks) {
+    constructor(groupReport, functionLinks, valueLinks, individualLinks, measurements) {
         this.groupReport = groupReport;
         this.functionLinks = functionLinks;
         this.valueLinks = valueLinks;
-        this.valueGroups = individualLinks;
+        this.individualLinks = individualLinks;
+        this.measurements = measurements;
     }
 
     static fromGroup(outputDir, group) {
         let groupId = group[0].groupId;
         let groupReport = ReportLink.group(outputDir, groupId);
         let functionIds = [];
+        let functionMeasurements = {};
         let values = [];
         let individualLinks = new Map();
         for (let id of group) {
@@ -262,6 +265,7 @@ export class HtmlBenchmarkGroup {
             let value = id.value;
             let individualLink = ReportLink.individual(outputDir, id);
             functionIds.push(functionId);
+            functionMeasurements[functionId] = id.measurements;
             values.push(value);
             individualLinks.set(`${functionId}-${value}`, individualLink);
         }
@@ -304,7 +308,8 @@ export class HtmlBenchmarkGroup {
             groupReport,
             functionLinks,
             valueLinks,
-            valueGroups,
+            individualLinks,
+            functionMeasurements
         );
     }
 }

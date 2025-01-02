@@ -424,7 +424,6 @@ let templates = {
 <body>
     <div class="body">
         <h2>{{group_id}}</h2>
-        {{#if violin_plot}}
         <h3>Violin Plot</h3>
         <a href="violin.svg">
             <img src="violin.svg" alt="Violin Plot" />
@@ -432,7 +431,6 @@ let templates = {
         <p>This chart shows the relationship between function/parameter and iteration time. The thickness of the shaded
             region indicates the probability that a measurement of the given function/parameter would take a particular
             length of time.</p>
-        {{/if}}
         {{#if line_chart}}
         <h3>Line Chart</h3>
         <img src="lines.svg" alt="Line Chart" />

@@ -41,12 +41,13 @@ class Bencher {
 }
 
 export class BenchmarkId {
-    constructor(groupId, functionId) {
+    constructor(groupId, functionId, measurements) {
         this.groupId = groupId;
         this.functionId = functionId;
         this.fullId = `${groupId}/${functionId}`;
         this.title = this.fullId;
         this.directoryName = this.fullId; // TODO slug?
+        this.measurements = measurements;
     }
 }
 

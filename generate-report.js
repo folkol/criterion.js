@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import {BenchmarkId,} from "./index.js";
+import {BenchmarkId, group,} from "./index.js";
 import {renderTemplate} from "./templates.js";
 import {Sample, Slope} from "./analysis.js";
 import child_process from "node:child_process";
@@ -91,7 +91,7 @@ class GnuPlotter {
     }
 
     violin(ctx, data) {
-        violin(ctx.id, ctx.outputDirectory, data.measurements, ctx.size)
+        violin(ctx.id, ctx.outputDirectory, data, ctx.size)
     }
 }
 
@@ -291,64 +291,99 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
     gnuplot(script);
 }
 
-function violin(id, outputDirectory, measurements, size) {
-    throw 'WIP'
-    let slopeEstimate = measurements.absoluteEstimates.slope;
-    let slopeDist = measurements.distributions.slope;
-    let [lb, ub] = confidenceInterval(
-        new Sample(slopeDist.numbers).percentiles(),
-        slopeEstimate.confidenceInterval.confidenceLevel,
-    );
-    let data = measurements.data;
-    let [max_iters, typical] = [Math.max(...data.xs), Math.max(...data.ys)];
-    let scaled_numbers = [...data.ys];
-    let unit = scaleValues(typical, scaled_numbers);
-    let point_estimate = Slope.fit(measurements.data);
-    let scaled_points = [
-        point_estimate * max_iters,
-        lb * max_iters,
-        ub * max_iters,
-    ];
-    scaleValues(typical, scaled_points);
-    let [point, lb2, ub2] = scaled_points;
-    let exponent = 3 * Math.floor(Math.log10(max_iters) / 3);
-    let x_scale = 10 ** -exponent;
-    let x_label =
-        exponent === 0 ? "Iterations" : `Iterations (x 10^${exponent})`;
+function violin(id, outputDirectory, measurements) {
+    let allCurves = Object.values(measurements.measurements).map(x => new Sample(x.avgTimes.sample.numbers));
+    console.log(allCurves);
 
+// let path = PathBuf::from(&path);
+//     let all_curves_vec = all_curves.iter().rev().cloned().collect::<Vec<_>>();
+//     let all_curves: &[&(&BenchmarkId, Vec<f64>)] = &all_curves_vec;
+//
+    let kdes = allCurves.map(avgTimes => {
+        console.log('sweepAndEstimate', avgTimes)
+        let [xs, ys] = sweepAndEstimate(avgTimes, 500, null, avgTimes[0]);
+        let yMax = Math.max(...ys);
+        let ysNormalized = ys.map(y => y / yMax);
+        return [xs, ysNormalized];
+    });
+
+    let xs = kdes.flatMap(([xs, _]) => xs).filter(x => x > 0.)
+
+
+//     let kdes = all_curves
+//         .iter()
+//         .map(|&(_, sample)| {
+//             let (x, mut y) = kde::sweep(Sample::new(sample), KDE_POINTS, None);
+//             let y_max = Sample::new(&y).max();
+//             for y in y.iter_mut() {
+//                 *y /= y_max;
+//             }
+//
+//             (x, y)
+//         })
+//         .collect::<Vec<_>>();
+
+
+    let [min, max] = [xs[0], xs[0]];
+    for (let e of xs) {
+        if (e < min) {
+            min = e;
+        } else if (e > max) {
+            max = e;
+        }
+    }
+
+    let one = [1.0];
+    let unit = scaleValues((min + max) / 2, one);
+
+    console.log(outputDirectory, id, id.directoryName)
     let figurePath = path.join(
         outputDirectory,
-        id.directoryName,
+        id,
         "report",
-        "regression_small.svg",
+        "violin.svg",
     );
 
-    let script = `set output '${figurePath}'
-set xtics nomirror 
-set xlabel '${x_label}'
-set grid xtics
-set ytics nomirror 
-set ylabel 'Total sample time (${unit})'
-set grid ytics
-set key off
-set terminal svg dynamic dashed size 450, 300 font 'Helvetica'
-unset bars
-plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample', \
-     '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Linear regression', \
-     '-' using 1:2:3 with filledcurves fillstyle solid 0.25 noborder lc rgb '#1f78b4' title 'Confidence interval'    
-`;
-
-    for (let [x, y] of data.xs.map((x, i) => [
-        x * x_scale,
-        scaled_numbers[i],
-    ])) {
-        script += `${x} ${y} 0\n`;
+    let plotCommands = []
+    for (let i = 0; i < kdes.length; i++) {
+        let plotCommand = "'-' using 1:2:3 with filledcurves fillstyle noborder lc rgb '#1f78b4' ";
+        plotCommand += i === 0 ? "title 'PDF'" : "notitle";
+        plotCommands.push(plotCommand);
     }
-    script += "e\n";
+    let plotCommand = 'plot ' + plotCommands.join(', ')
+    console.log('plotCommand', plotCommand)
 
-    script += `0 0\n`;
-    script += `${max_iters * x_scale} ${point}\n`;
-    script += "e\n";
+    let funcs = Object.keys(measurements.measurements);
+    console.log('funcs', funcs);
+    let yTics = [];
+    for(let i = 0; i < funcs.length; i++) {
+        yTics.push(`'${funcs[i]}' ${i + 0.5}`);
+    }
+
+    let script = `set output '${figurePath}'
+set title 'Fibonacci: Violin plot'
+set xtics nomirror
+set xlabel 'Average time (${unit})'
+set xrange [0:${max * one[0]}]
+set grid xtics
+set ytics nomirror (${yTics.join(', ')})
+set ylabel 'Benchmark'
+set yrange [0:${funcs.length}]
+set terminal svg dynamic dashed size 1280, ${200 + 25 * funcs.length} font 'Helvetica'
+unset bars
+${plotCommand}\n`;
+
+    for (let i = 0; i < kdes.length; i++) {
+        let i2 = i + 0.5;
+        let [xs, ys] = kdes[i];
+        let ys1 = ys.map(y => i2 + y * .45);
+        let ys2 = ys.map(y => i2 - y * .45);
+        let xScaled = xs.map(x => x * one[0]);
+        for (let [x, y1, y2] of xScaled.map((x, i) => [x, ys1[i], ys2[i]])) {
+            script += `${x} ${y1} ${y2}\n`;
+        }
+        script += 'e\n';
+    }
 
     gnuplot(script);
 }
@@ -643,21 +678,15 @@ function listBenchmarks(directory) {
 }
 
 function generateGroupReport(group, outputDirectory) {
-//     fn generate_summary(
-//         &self,
-//         id: &BenchmarkId,
-//         data: &[&(&BenchmarkId, Vec<f64>)],
-//         report_context: &ReportContext,
-//         formatter: &dyn ValueFormatter,
-//         full_summary: bool,
-//     ) {
+    // console.log('generateGroupReport', JSON.stringify(group, undefined, 4));
+
     let groupId = group.groupReport.name;
     let plot_ctx = new PlotContext(groupId, outputDirectory, null, false);
     let reportDir = path.join(outputDirectory, groupId, 'report');
     fs.mkdirSync(reportDir, {recursive: true})
 
     let plotter = new GnuPlotter;
-    // plotter.violin(plot_ctx)
+    plotter.violin(plot_ctx, group)
 
 
 //         self.plotter.borrow_mut().violin(plot_ctx, formatter, data);
@@ -717,11 +746,9 @@ async function main() {
         let blob = fs.readFileSync(benchmark);
         let {id, measurements} = JSON.parse(blob);
         let {groupId, functionId, valueString, throughput} = id;
+
         let internalBenchmarkId = new BenchmarkId(
-            groupId,
-            functionId,
-            valueString,
-            throughput,
+            groupId, functionId, measurements,
         );
         generatePlotsAndReport(measurements, internalBenchmarkId, outputDir);
         benchmarks.push(internalBenchmarkId);
