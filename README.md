@@ -17,7 +17,11 @@ Micro-benchmarking is what it is, if your production code isn't executed in a ti
 
 ### Gnuplot
 
-[Gnuplot](https://gnuplot.sourceforge.net) is needed for generating the HTML report.
+[Gnuplot](https://gnuplot.sourceforge.net) is needed for report generation. (`gnuplot 5.4 patchlevel 8` on macOS seems to work.)
+
+### Unstable API
+
+The code change a lot, if you run into 'weird problems' -- try removing any test outputs created by an older version of Criterion.
 
 ## How do I get it?
 

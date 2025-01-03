@@ -61,22 +61,7 @@ function sweepAndEstimate(sample, npoints, range, point_to_estimate) {
     return [xs, ys, point_estimate];
 }
 
-class PlotContext {
-    constructor(id, outputDirectory, size, isThumbnail) {
-        this.id = id;
-        this.outputDirectory = outputDirectory;
-        this.size = size;
-        this.isThumbnail = isThumbnail;
-    }
-}
-
-class PlotData {
-    constructor(measurements) {
-        this.measurements = measurements;
-    }
-}
-
-function pdfSmall(id, outputDirectory, measurements) {
+function plotPdfSmall(id, outputDirectory, measurements) {
     let iterCounts = measurements.data.xs;
     let maxIters = Math.max(...iterCounts);
     let exponent = 3 * Math.floor(Math.log10(maxIters) / 3);
@@ -128,6 +113,96 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
     script += "e\n";
     script += `${mean} ${mean_y}\n`;
     script += `${mean} 0\n`;
+    script += "e\n";
+
+    gnuplot(script);
+}
+
+function plotSlope(id, outputDirectory, measurements) {
+    let [statistic, distribution, estimate] = ['Slope', measurements.distributions.slope, measurements.absoluteEstimates.slope];
+
+    let ci = estimate.confidenceInterval;
+    let typical = ci.upperBound;
+    // let typical = estimate.pointEstimate;
+    let ci_values = [ci.lowerBound, ci.upperBound, estimate.pointEstimate];
+
+    let unit = scaleValues(typical, ci_values);
+    let [lb, ub, point] = [ci_values[0], ci_values[1], ci_values[2]];
+
+    let start = lb - (ub - lb) / 9.;
+    let end = ub + (ub - lb) / 9.;
+    let scaled_xs = [...distribution.numbers];
+    scaleValues(typical, scaled_xs);
+    let scaled_xs_sample = new Sample(scaled_xs);
+
+    let [kde_xs, ys] = sweepAndEstimate(scaled_xs_sample, 500, [start, end]);
+
+    // interpolate between two points of the KDE sweep to find the Y position at the point estimate.
+    let n_point = kde_xs.length - 1;
+    for (let i = 0; i < kde_xs.length; i++) {
+        if (kde_xs[i] >= point) {
+            n_point = Math.max(i, 1);
+            break
+        }
+    }
+
+    let slope = (ys[n_point] - ys[n_point - 1]) / (kde_xs[n_point] - kde_xs[n_point - 1]);
+    let y_point = ys[n_point - 1] + (slope * (point - kde_xs[n_point - 1]));
+
+
+    // let zero = iter::repeat(0);
+
+
+    let start2 = kde_xs.findIndex(x => x >= lb);
+    let end2 = kde_xs.findLastIndex(x => x <= ub);
+
+    let len = end2 - start2;
+
+    let kde_xs_sample = new Sample(kde_xs);
+
+    let title = `${id.title}: ${statistic}`;
+    let xLabel = `Average time (${unit})`
+    let [xMin, xMax] = [Math.min(...kde_xs_sample.numbers), Math.max(...kde_xs_sample.numbers)];
+    let yLabel = 'Density (a.u.)';
+
+    let reportDir = path.join(outputDirectory, id.directoryName, "report");
+    fs.mkdirSync(reportDir, {recursive: true});
+    let figurePath = path.join(
+        reportDir,
+        "slope.svg",
+    );
+
+    // let min_x = Math.min(...xs);
+    // let max_x = Math.max(...xs);
+    // let max_y = Math.max(...ys) * 1.1;
+
+    let script = `set output '${figurePath}'
+set title 'Fibonacci/Iterative: slope'
+set xtics nomirror
+set xlabel 'Average time (ns)'
+set xrange [${xMin}:${xMax}]
+set ytics nomirror
+set ylabel 'Density (a.u.)'
+set key on outside top right Left reverse
+set terminal svg dynamic dashed size 1280, 720 font 'Helvetica'
+unset bars
+plot '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Bootstrap distribution', \
+     '-' using 1:2:3 with filledcurves fillstyle solid 0.25 noborder lc rgb '#1f78b4' title 'Confidence interval', \
+     '-' using 1:2 with lines lt 2 lw 2 lc rgb '#1f78b4' title 'Point estimate'
+    `;
+
+    for (let [x, y] of kde_xs.map((x, i) => [x, ys[i]])) {
+        script += `${x} ${y}\n`;
+    }
+    script += "e\n";
+
+    for (let [x, y] of kde_xs.slice(start, start + len).map((x, i) => [x, ys.slice(start)[i]])) {
+        script += `${x} ${y} 0\n`;
+    }
+    script += "e\n";
+
+    script += `${point} 0\n`
+    script += `${point} ${y_point}\n`
     script += "e\n";
 
     gnuplot(script);
@@ -211,7 +286,7 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
     gnuplot(script);
 }
 
-function regressionSmall(id, outputDirectory, measurements) {
+function plotRegressionSmall(id, outputDirectory, measurements) {
     let slopeEstimate = measurements.absoluteEstimates.slope;
     let slopeDist = measurements.distributions.slope;
     let [lb, ub] = confidenceInterval(
@@ -272,7 +347,7 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
     gnuplot(script);
 }
 
-function violin(id, outputDirectory, measurements) {
+function plotViolin(id, outputDirectory, measurements) {
     let allCurves = Object.values(measurements.measurements).map(x => new Sample(x.avgTimes.sample.numbers));
 
     let kdes = allCurves.map(avgTimes => {
@@ -463,11 +538,11 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
 }
 
 function generate_plots(id, outputDirectory, measurements) {
-    pdfSmall(id, outputDirectory, measurements)
+    plotPdfSmall(id, outputDirectory, measurements)
     // pdf(plot_ctx, plot_data);
 
     if (measurements.absoluteEstimates.slope) {
-        regressionSmall(id, outputDirectory, measurements)
+        plotRegressionSmall(id, outputDirectory, measurements)
         // regression(plot_ctx, plot_data);
     }
 
@@ -566,6 +641,9 @@ function generatePlotsAndReport(
         // new Plot("MAD", "MAD.svg"),
     ];
     if (measurements.absoluteEstimates.slope) {
+        console.log('absoluteEstimates.slope!')
+        plotSlope(id, outputDirectory, measurements)
+        additional_plots.push({url: 'slope.svg', name: 'Slope'})
         // additional_plots.push(new Plot("Slope", "slope.svg"));
     }
 
@@ -630,7 +708,7 @@ function generateGroupReport(group, outputDirectory) {
     let reportDir = path.join(outputDirectory, groupId, 'report');
     fs.mkdirSync(reportDir, {recursive: true})
 
-    violin(groupId, outputDirectory, group)
+    plotViolin(groupId, outputDirectory, group)
 
     let context = {
         group_id: group.groupReport.name,
@@ -650,6 +728,7 @@ function generateGroupReport(group, outputDirectory) {
 }
 
 async function main() {
+    console.log(process.cwd())
     if (process.argv.length !== 3 || !fs.existsSync(process.argv[2])) {
         console.error("usage: npx criterion-report path_to_criterion_folder");
         process.exit(1);

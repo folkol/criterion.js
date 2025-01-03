@@ -202,7 +202,7 @@ class Data {
             let outYs = [];
             for (let i = 0; i < xs.length; i++) {
                 let j = Math.floor(Math.random() * xs.length);
-                outXs.push(xs[i]);
+                outXs.push(xs[j]);
                 outYs.push(ys[j]);
             }
             return new Data(outXs, outYs);
