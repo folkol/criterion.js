@@ -76,26 +76,7 @@ class PlotData {
     }
 }
 
-class GnuPlotter {
-    pdf(ctx, data) {
-        let size = ctx.size;
-        ctx.isThumbnail
-            ? pdfSmall(ctx.id, ctx.outputDirectory, data.measurements, size)
-            : pdf(ctx.id, ctx.outputDirectory, data.measurements, size);
-    }
-
-    regression(ctx, data) {
-        ctx.isThumbnail
-            ? regressionSmall(ctx.id, ctx.outputDirectory, data.measurements, ctx.size)
-            : regression(ctx.id, ctx.outputDirectory, data.measurements, ctx.size);
-    }
-
-    violin(ctx, data) {
-        violin(ctx.id, ctx.outputDirectory, data, ctx.size)
-    }
-}
-
-function pdfSmall(id, outputDirectory, measurements, size) {
+function pdfSmall(id, outputDirectory, measurements) {
     let iterCounts = measurements.data.xs;
     let maxIters = Math.max(...iterCounts);
     let exponent = 3 * Math.floor(Math.log10(maxIters) / 3);
@@ -230,7 +211,7 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
     gnuplot(script);
 }
 
-function regressionSmall(id, outputDirectory, measurements, size) {
+function regressionSmall(id, outputDirectory, measurements) {
     let slopeEstimate = measurements.absoluteEstimates.slope;
     let slopeDist = measurements.distributions.slope;
     let [lb, ub] = confidenceInterval(
@@ -482,20 +463,12 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
 }
 
 function generate_plots(id, outputDirectory, measurements) {
-    let plotter = new GnuPlotter();
-
-    let plot_ctx = new PlotContext(id, outputDirectory, null, false);
-
-    let plot_data = new PlotData(measurements);
-
-    let plot_ctx_small = new PlotContext(id, outputDirectory, [450, 300], true);
-
-    plotter.pdf(plot_ctx_small, plot_data);
-    // plotter.pdf(plot_ctx, plot_data);
+    pdfSmall(id, outputDirectory, measurements)
+    // pdf(plot_ctx, plot_data);
 
     if (measurements.absoluteEstimates.slope) {
-        plotter.regression(plot_ctx_small, plot_data);
-        // plotter.regression(plot_ctx, plot_data);
+        regressionSmall(id, outputDirectory, measurements)
+        // regression(plot_ctx, plot_data);
     }
 
     //         self.plotter.borrow_mut().pdf(plot_ctx_small, plot_data);
@@ -654,12 +627,10 @@ function listBenchmarks(directory) {
 
 function generateGroupReport(group, outputDirectory) {
     let groupId = group.groupReport.name;
-    let plot_ctx = new PlotContext(groupId, outputDirectory, null, false);
     let reportDir = path.join(outputDirectory, groupId, 'report');
     fs.mkdirSync(reportDir, {recursive: true})
-
-    let plotter = new GnuPlotter;
-    plotter.violin(plot_ctx, group)
+    
+    violin(groupId, outputDirectory, group)
 
     let context = {
         group_id: group.groupReport.name,
