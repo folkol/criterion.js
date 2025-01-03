@@ -74,7 +74,7 @@ $ npx criterion-report ./criterion/
 
 ## How do I interpret the regression plots?
 
-The Regression plot can be used to judge the quality of the sample. Each measurement will use increasingly higher iteration counts -- and the expectation is that the time for each sample goes up as the number of iterations increases. If this is not the case, the samples might not be independent -- or something happened that changed time per iteration (garbage collection pauses, optimizing compilation, something hogged the CPU, the laptop switched to battery power?). In any case, if the dots on the regression plot isn't very close to the line, be careful with interpreting the results.
+The Regression plot can be used to judge the quality of the sample. Each measurement will use increasingly higher iteration counts -- and the expectation is that the time for each sample goes up as the number of iterations increases. If this is not the case, the samples might not be independent -- or something happened that changed time per iteration (garbage collection pauses, optimizing compilation, something hogged the CPU, the laptop switched to battery power?). In any case, if the dots on the regression plot aren't close to the line, be careful when interpreting the results.
 
 Here is an example where 'something' happened during the test. My guess is that the routine got optimized half-way through, and that we should re-run the test with a longer warmup time.
 
