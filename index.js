@@ -290,7 +290,7 @@ export class Criterion {
 
     /**
      * Creates an instance of Criterion.
-     * @param {Object} configuration - Configuration overrides
+     * @param {Object} [configuration] - Configuration overrides
      */
     constructor(configuration) {
         this.config = new CriterionConfig(configuration);
@@ -328,7 +328,7 @@ export class Criterion {
 }
 
 // Would this work?
-let defaultCriterion = new Criterion({warmUpTime: 0.1, measurementTime: 0.1})
+let defaultCriterion = new Criterion;
 let currentGroup = defaultCriterion.group('default');
 let groupNameStack = [];
 
