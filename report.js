@@ -116,61 +116,58 @@ export class CliReport extends Report {
         );
     }
 
-    measurementComplete(id, _context, measurements) {
-        let typicalEstimate = measurements.absoluteEstimates.typical();
+    measurementComplete(id, _context, reportData) {
+        let typicalEstimate = reportData.statistics.slope ?? reportData.statistics.mean;
 
-        let {lowerBound, upperBound} = typicalEstimate.confidenceInterval;
         console.log(
             `${id.title.padEnd(23)} time:`,
-            `[${formatMeasurement(lowerBound)}`,
-            formatMeasurement(typicalEstimate.pointEstimate),
-            `${formatMeasurement(upperBound)}]`,
+            `[${formatMeasurement(typicalEstimate.estimates.lb)}`,
+            formatMeasurement(typicalEstimate.estimates.point),
+            `${formatMeasurement(typicalEstimate.estimates.ub)}]`,
         );
 
-        if (measurements.throughput) {
+        if (reportData.throughput) {
             // TODO
         }
 
-        this.outliers(measurements.avgTimes);
+        this.outliers(reportData.measurements.tukey, reportData.measurements.averages);
 
-        let slopeEstimate = measurements.absoluteEstimates.slope;
+        let slopeEstimate = reportData.statistics.slope.estimates;
 
         function formatShortEstimate(estimate) {
-            let lb = formatMeasurement(
-                estimate.confidenceInterval.lowerBound,
-            );
-            let ub = formatMeasurement(
-                estimate.confidenceInterval.upperBound,
-            );
+            let lb = formatMeasurement(estimate.lb);
+            let ub = formatMeasurement(estimate.ub);
             return `[${lb} ${ub}]`;
         }
+
+        let data = {xs: reportData.measurements.iters, ys: reportData.measurements.times};
 
         if (slopeEstimate) {
             let slop = formatShortEstimate(slopeEstimate);
             let lb = Slope.rSquared(
-                slopeEstimate.confidenceInterval.lowerBound,
-                measurements.data,
+                slopeEstimate.lb,
+                data,
             ).toFixed(7);
             let ub = Slope.rSquared(
-                slopeEstimate.confidenceInterval.upperBound,
-                measurements.data,
+                slopeEstimate.ub,
+                data,
             ).toFixed(7);
             console.log(`slope  ${slop}`, `R^2            [${lb} ${ub}]`);
         }
-        let mean = formatShortEstimate(measurements.absoluteEstimates.mean);
-        let stdDev = formatShortEstimate(measurements.absoluteEstimates.stdDev);
-        let median = formatShortEstimate(measurements.absoluteEstimates.median);
+        let mean = formatShortEstimate(reportData.statistics.mean.estimates);
+        let stdDev = formatShortEstimate(reportData.statistics.stdDev.estimates);
+        let median = formatShortEstimate(reportData.statistics.median.estimates);
         let medianAbsDev = formatShortEstimate(
-            measurements.absoluteEstimates.medianAbsDev,
+            reportData.statistics.medianAbsDev.estimates,
         );
         console.log(`mean   ${mean} std. dev.      ${stdDev}`);
         console.log(`median ${median} med. abs. dev. ${medianAbsDev}`);
     }
 
-    outliers(labeledSample) {
+    outliers(fences, numbers) {
         let [los, lom, noa, him, his] = [0, 0, 0, 0, 0];
-        let [lost, lomt, himt, hist] = labeledSample.fences;
-        for (let n of labeledSample.sample.numbers) {
+        let [lost, lomt, himt, hist] = fences;
+        for (let n of numbers) {
             if (n < lost) {
                 los += 1;
             } else if (n > hist) {
@@ -185,7 +182,7 @@ export class CliReport extends Report {
         }
         // return [los, lom, noa, him, his];
         let numOutliers = los + lom + him + his;
-        let sampleSize = labeledSample.sample.numbers.length;
+        let sampleSize = numbers.length;
         if (numOutliers === 0) {
             return;
         }
@@ -319,72 +316,11 @@ export class JsonReport extends Report {
         super();
     }
 
-    measurementComplete(id, context, measurements) {
+    measurementComplete(id, context, reportData) {
         let where = path.join(context.outputDirectory, id.directoryName);
         fs.mkdirSync(where, {recursive: true});
         let filePath = path.join(where, "benchmark.json");
-        fs.writeFileSync(filePath, JSON.stringify({
-            groupId: id.groupId,
-            functionId: id.functionId,
-            measurements: {
-                iters: measurements.data.xs,
-                times: measurements.data.ys,
-                averages: measurements.avgTimes.sample.numbers,
-                tukey: measurements.avgTimes.fences,
-            },
-            statistics: {
-                mean: {
-                    estimates: {
-                        cl: measurements.absoluteEstimates.mean.confidenceInterval.confidenceLevel,
-                        lb: measurements.absoluteEstimates.mean.confidenceInterval.lowerBound,
-                        ub: measurements.absoluteEstimates.mean.confidenceInterval.upperBound,
-                        se: measurements.absoluteEstimates.mean.standardError,
-                        point: measurements.absoluteEstimates.mean.pointEstimate,
-                    },
-                    bootstrap: measurements.distributions.mean.numbers
-                },
-                median: {
-                    estimates: {
-                        cl: measurements.absoluteEstimates.mean.confidenceInterval.confidenceLevel,
-                        lb: measurements.absoluteEstimates.median.confidenceInterval.lowerBound,
-                        ub: measurements.absoluteEstimates.median.confidenceInterval.upperBound,
-                        se: measurements.absoluteEstimates.median.standardError,
-                        point: measurements.absoluteEstimates.median.pointEstimate,
-                    },
-                    bootstrap: measurements.distributions.median.numbers
-                },
-                medianAbsDev: {
-                    estimates: {
-                        cl: measurements.absoluteEstimates.mean.confidenceInterval.confidenceLevel,
-                        lb: measurements.absoluteEstimates.medianAbsDev.confidenceInterval.lowerBound,
-                        ub: measurements.absoluteEstimates.medianAbsDev.confidenceInterval.upperBound,
-                        se: measurements.absoluteEstimates.medianAbsDev.standardError,
-                        point: measurements.absoluteEstimates.medianAbsDev.pointEstimate,
-                    },
-                    bootstrap: measurements.distributions.medianAbsDev.numbers
-                },
-                slope: {
-                    estimates: {
-                        cl: measurements.absoluteEstimates.mean.confidenceInterval.confidenceLevel,
-                        lb: measurements.absoluteEstimates.slope.confidenceInterval.lowerBound,
-                        ub: measurements.absoluteEstimates.slope.confidenceInterval.upperBound,
-                        se: measurements.absoluteEstimates.slope.standardError,
-                        point: measurements.absoluteEstimates.slope.pointEstimate,
-                    },
-                    bootstrap: measurements.distributions.slope.numbers
-                },
-                stdDev: {
-                    estimates: {
-                        cl: measurements.absoluteEstimates.mean.confidenceInterval.confidenceLevel,
-                        lb: measurements.absoluteEstimates.stdDev.confidenceInterval.lowerBound,
-                        ub: measurements.absoluteEstimates.stdDev.confidenceInterval.upperBound,
-                        se: measurements.absoluteEstimates.stdDev.standardError,
-                        point: measurements.absoluteEstimates.stdDev.pointEstimate,
-                    },
-                    bootstrap: measurements.distributions.stdDev.numbers
-                },
-            }
-        }));
+        fs.writeFileSync(filePath, JSON.stringify(reportData));
     }
 }
 

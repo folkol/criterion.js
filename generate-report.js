@@ -690,8 +690,8 @@ async function main() {
                         lowerBound: statistics.mean.estimates.lb,
                         upperBound: statistics.mean.estimates.ub
                     },
-                    standardError: statistics.mean.se,
-                    pointEstimate: statistics.mean.point,
+                    standardError: statistics.mean.estimates.se,
+                    pointEstimate: statistics.mean.estimates.point,
                 },
                 median: {
                     confidenceInterval: {
@@ -699,8 +699,8 @@ async function main() {
                         lowerBound: statistics.median.estimates.lb,
                         upperBound: statistics.median.estimates.ub
                     },
-                    standardError: statistics.median.se,
-                    pointEstimate: statistics.median.point,
+                    standardError: statistics.median.estimates.se,
+                    pointEstimate: statistics.median.estimates.point,
                 },
                 slope: {
                     confidenceInterval: {
@@ -708,8 +708,8 @@ async function main() {
                         lowerBound: statistics.slope.estimates.lb,
                         upperBound: statistics.slope.estimates.ub
                     },
-                    standardError: statistics.slope.se,
-                    pointEstimate: statistics.slope.point,
+                    standardError: statistics.slope.estimates.se,
+                    pointEstimate: statistics.slope.estimates.point,
                 },
                 medianAbsDev: {
                     confidenceInterval: {
@@ -717,8 +717,8 @@ async function main() {
                         lowerBound: statistics.medianAbsDev.estimates.lb,
                         upperBound: statistics.medianAbsDev.estimates.ub
                     },
-                    standardError: statistics.medianAbsDev.se,
-                    pointEstimate: statistics.medianAbsDev.point,
+                    standardError: statistics.medianAbsDev.estimates.se,
+                    pointEstimate: statistics.medianAbsDev.estimates.point,
                 },
                 stdDev: {
                     confidenceInterval: {
@@ -726,8 +726,8 @@ async function main() {
                         lowerBound: statistics.stdDev.estimates.lb,
                         upperBound: statistics.stdDev.estimates.ub
                     },
-                    standardError: statistics.stdDev.se,
-                    pointEstimate: statistics.stdDev.point,
+                    standardError: statistics.stdDev.estimates.se,
+                    pointEstimate: statistics.stdDev.estimates.point,
                 },
             },
             distributions: {
