@@ -206,35 +206,27 @@ function confidenceInterval(percentiles, confidenceLevel) {
     ];
 }
 
-function regression(id, outputDirectory, measurements, size) {
+function plotRegression(id, outputDirectory, measurements, size) {
     let slopeEstimate = measurements.absoluteEstimates.slope;
     let slopeDist = measurements.distributions.slope;
     let [lb, ub] = confidenceInterval(
         new Sample(slopeDist.numbers).percentiles(),
         slopeEstimate.confidenceInterval.confidenceLevel,
     );
-
     let data = measurements.data;
-
-    let [maxIters, typical] = [Math.max(...data.xs), Math.max(...data.ys)];
+    let [max_iters, typical] = [Math.max(...data.xs), Math.max(...data.ys)];
     let scaled_numbers = [...data.ys];
     let unit = scaleValues(typical, scaled_numbers);
-
     let point_estimate = Slope.fit(measurements.data);
-
     let scaled_points = [
-        point_estimate * maxIters,
-        lb * maxIters,
-        ub * maxIters,
+        point_estimate * max_iters,
+        lb * max_iters,
+        ub * max_iters,
     ];
-
     scaleValues(typical, scaled_points);
-
     let [point, lb2, ub2] = scaled_points;
-
-    let exponent = 3 * Math.floor(Math.log10(maxIters) / 3);
+    let exponent = 3 * Math.floor(Math.log10(max_iters) / 3);
     let x_scale = 10 ** -exponent;
-
     let x_label =
         exponent === 0 ? "Iterations" : `Iterations (x 10^${exponent})`;
 
@@ -246,14 +238,14 @@ function regression(id, outputDirectory, measurements, size) {
     );
 
     let script = `set output '${figurePath}'
-set title 'Fibonacci/Iterative'
+set title '${id.title}'
 set xtics nomirror 
 set xlabel '${x_label}'
 set grid xtics
 set ytics nomirror 
 set ylabel 'Total sample time (${unit})'
 set grid ytics
-set key on inside top left Left reverse 
+set key on inside top left Left reverse
 set terminal svg dynamic dashed size 1280, 720 font 'Helvetica'
 unset bars
 plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample', \
@@ -261,13 +253,20 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
      '-' using 1:2:3 with filledcurves fillstyle solid 0.25 noborder lc rgb '#1f78b4' title 'Confidence interval'    
 `;
 
-    for (let [x, y] of data.xs.map((x, i) => [x, scaled_numbers[i]])) {
+    for (let [x, y] of data.xs.map((x, i) => [
+        x * x_scale,
+        scaled_numbers[i],
+    ])) {
         script += `${x} ${y} 0\n`;
     }
     script += "e\n";
 
     script += `0 0\n`;
-    script += `${maxIters} ${point}\n`;
+    script += `${max_iters * x_scale} ${point}\n`;
+    script += "e\n";
+
+    script += `0 0 0\n`;
+    script += `${max_iters * x_scale} ${lb2} ${ub2}\n`;
     script += "e\n";
 
     gnuplot(script);
@@ -534,6 +533,7 @@ function generate_plots(id, outputDirectory, measurements) {
 
     if (measurements.absoluteEstimates.slope) {
         plotRegressionSmall(id, outputDirectory, measurements)
+        plotRegression(id, outputDirectory, measurements)
         // regression(plot_ctx, plot_data);
     }
 
