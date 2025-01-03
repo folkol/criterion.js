@@ -46,6 +46,9 @@ export function slugify(s) {
 
 export class BenchmarkId {
     constructor(groupId, functionId, measurements) {
+        if(process.env.CRITERION_ENV) {
+            functionId = `${functionId} (${process.env.CRITERION_ENV})`
+        }
         this.groupId = groupId;
         this.functionId = functionId;
         this.fullId = `${groupId}/${functionId}`;

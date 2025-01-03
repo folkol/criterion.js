@@ -52,12 +52,25 @@ group.bench("f", f);
 group.bench("g", g);
 ```
 
+
 ## How do I run it?
 
 ```
-$ node path/to/my/example-benchmark.js
+$ node path/to/my/fibonacci.js
 $ npx criterion-report ./criterion/
 ```
+
+## CRITERION_ENV
+
+If you want to compare your functions in different runtime environments, you can set the CRITERION_ENV environment variable -- and you will get synthetic tests with the env name appended:
+
+```
+$ node path/to/my/fibonacci.js
+$ CRITERION_ENV=bun bun path/to/my/fibonacci.js
+$ npx criterion-report ./criterion/
+```
+
+![CRITERION_ENV example](criterion_env_example.png)
 
 ## TODO
 

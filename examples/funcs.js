@@ -28,3 +28,23 @@ export function fibonacciIterative(n) {
     }
     return b;
 }
+
+export function addReduce(xs) {
+    return xs.reduce((acc, x) => acc + x);
+}
+
+export function addOldSchool(xs) {
+    let result = 0;
+    for (let i = 0; i < xs.length; i++) {
+        result += xs[i];
+    }
+    return result;
+}
+
+export function addNewSchool(xs) {
+    let result = 0;
+    for (let x of xs) {
+        result += x;
+    }
+    return result;
+}

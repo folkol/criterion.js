@@ -9,10 +9,10 @@ let criterion = new Criterion({
 
 let group = criterion.group('Default');
 group.bench('Hello', () => {})
-group.bench('Hello (async)', async () => {})
+group.bench('Hello Async', async () => {})
 
 let fibonacci = criterion.group('Fibonacci');
 
 fibonacci.bench('Iterative', fibonacciIterative, 15);
-fibonacci.bench('Iterative (async)', fibonacciAsync, 15);
+fibonacci.bench('Iterative Async', fibonacciAsync, 15);
 fibonacci.bench('Recursive', fibonacciRecursive, 15);
