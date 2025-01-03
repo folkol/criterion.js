@@ -298,7 +298,7 @@ export class Criterion {
 
     /**
      * Creates a new benchmark group with a specified name.
-     * Typically alternative implementations of the same functionality.
+     * Typically alternative implementations of the same thing.
      * @param {string} name - The name of the benchmark group.
      * @returns {BenchmarkGroup} A new BenchmarkGroup instance.
      */
@@ -332,6 +332,12 @@ let defaultCriterion = new Criterion({warmUpTime: 0.1, measurementTime: 0.1})
 let currentGroup = defaultCriterion.group('default');
 let groupNameStack = [];
 
+/**
+ * Experimental 'Jasminesque' API for creating a group.
+ * Uses a default-configured Criterion instance.
+ *
+ * See examples/jasminesque.js.
+  */
 export function group(name, cb) {
     groupNameStack.push(name)
     currentGroup = defaultCriterion.group(groupNameStack.join('_'))
@@ -339,6 +345,13 @@ export function group(name, cb) {
     groupNameStack.pop();
 }
 
+/**
+ * Experimental 'Jasminesque' API for benching a function.
+ * Uses a default-configured Criterion instance and possibly
+ * a default group.
+ *
+ * See examples/jasminesque.js.
+ */
 export function bench(name, f, ...rest) {
     currentGroup.bench(name, f, ...rest);
 }

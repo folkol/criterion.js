@@ -1,4 +1,21 @@
 /**
+ * Experimental 'Jasminesque' API for creating a group.
+ * Uses a default-configured Criterion instance.
+ *
+ * See examples/jasminesque.js.
+  */
+export function group(name: any, cb: any): void;
+
+/**
+ * Experimental 'Jasminesque' API for benching a function.
+ * Uses a default-configured Criterion instance and possibly
+ * a default group.
+ *
+ * See examples/jasminesque.js.
+ */
+export function bench(name: any, f: any, ...rest: any[]): void;
+
+/**
  * The main API for Criterion.js
  * Manages task execution and reporting for benchmarking tasks.
  */
@@ -16,6 +33,7 @@ export class Criterion {
      */
     group(name: string): BenchmarkGroup;
 }
+
 /**
  * Configuration class for benchmarking settings in Criterion.
  * Allows customization of key parameters such as confidence level, measurement time, and sampling.
@@ -78,6 +96,7 @@ declare class CriterionConfig {
      */
     outputDirectory: string;
 }
+
 /**
  * A group of related benchmarks. Typically alternative implementations of the same function.
  */
@@ -101,7 +120,7 @@ declare class BenchmarkGroup {
     /**
      * Adds a new benchmark to the group and schedules it for execution.
      * @param {string} name - The name of the benchmark.
-     * @param {Function} f - The function to be benchmarked.
+     * @param {function} f - The function to be benchmarked.
      * @param {...any} rest - Additional parameters for the benchmark function.
      */
     bench(name: string, f: (...params: any[]) => any, ...rest: any[]): void;

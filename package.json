@@ -5,7 +5,7 @@
   "main": "index.js",
   "homepage": "https://github.com/folkol/criterion.js/blob/master/README.md",
   "scripts": {
-    "types": "npx -p typescript tsc index.js --declaration --allowJs --emitDeclarationOnly"
+    "types": "tsc index.js --declaration --allowJs --emitDeclarationOnly"
   },
   "bin": {
     "criterion-report": "generate-report.js"
