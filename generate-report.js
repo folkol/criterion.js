@@ -118,12 +118,9 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
     gnuplot(script);
 }
 
-function plotSlope(id, outputDirectory, measurements) {
-    let [statistic, distribution, estimate] = ['Slope', measurements.distributions.slope, measurements.absoluteEstimates.slope];
-
+function plotAdditional(id, outputDirectory, statistic, filename, distribution, estimate) {
     let ci = estimate.confidenceInterval;
     let typical = ci.upperBound;
-    // let typical = estimate.pointEstimate;
     let ci_values = [ci.lowerBound, ci.upperBound, estimate.pointEstimate];
 
     let unit = scaleValues(typical, ci_values);
@@ -149,10 +146,6 @@ function plotSlope(id, outputDirectory, measurements) {
     let slope = (ys[n_point] - ys[n_point - 1]) / (kde_xs[n_point] - kde_xs[n_point - 1]);
     let y_point = ys[n_point - 1] + (slope * (point - kde_xs[n_point - 1]));
 
-
-    // let zero = iter::repeat(0);
-
-
     let start2 = kde_xs.findIndex(x => x >= lb);
     let end2 = kde_xs.findLastIndex(x => x <= ub);
 
@@ -161,25 +154,19 @@ function plotSlope(id, outputDirectory, measurements) {
     let kde_xs_sample = new Sample(kde_xs);
 
     let title = `${id.title}: ${statistic}`;
-    let xLabel = `Average time (${unit})`
     let [xMin, xMax] = [Math.min(...kde_xs_sample.numbers), Math.max(...kde_xs_sample.numbers)];
-    let yLabel = 'Density (a.u.)';
 
     let reportDir = path.join(outputDirectory, id.directoryName, "report");
     fs.mkdirSync(reportDir, {recursive: true});
     let figurePath = path.join(
         reportDir,
-        "slope.svg",
+        filename,
     );
 
-    // let min_x = Math.min(...xs);
-    // let max_x = Math.max(...xs);
-    // let max_y = Math.max(...ys) * 1.1;
-
     let script = `set output '${figurePath}'
-set title 'Fibonacci/Iterative: slope'
+set title '${title}'
 set xtics nomirror
-set xlabel 'Average time (ns)'
+set xlabel 'Average time (${unit})'
 set xrange [${xMin}:${xMax}]
 set ytics nomirror
 set ylabel 'Density (a.u.)'
@@ -196,7 +183,7 @@ plot '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Bootstrap distri
     }
     script += "e\n";
 
-    for (let [x, y] of kde_xs.slice(start, start + len).map((x, i) => [x, ys.slice(start)[i]])) {
+    for (let [x, y] of kde_xs.slice(start2, start2 + len).map((x, i) => [x, ys.slice(start2)[i]])) {
         script += `${x} ${y} 0\n`;
     }
     script += "e\n";
@@ -633,16 +620,20 @@ function generatePlotsAndReport(
 
     generate_plots(id, outputDirectory, measurements);
 
+    plotAdditional(id, outputDirectory, 'Mean', 'mean.svg', measurements.distributions.mean, measurements.absoluteEstimates.mean);
+    plotAdditional(id, outputDirectory, 'Median', 'median.svg', measurements.distributions.median, measurements.absoluteEstimates.median);
+    plotAdditional(id, outputDirectory, 'Std. Dev.', 'stdDev.svg', measurements.distributions.stdDev, measurements.absoluteEstimates.stdDev);
+    plotAdditional(id, outputDirectory, 'MAD', 'mad.svg', measurements.distributions.medianAbsDev, measurements.absoluteEstimates.medianAbsDev);
     let additional_plots = [
+        {url:'mean.svg', name: 'Mean'},
+        {url:'median.svg', name: 'Median'},
+        {url:'stdDev.svg', name: 'Std. Dev.'},
+        {url:'mad.svg', name: 'MAD'}
         // new Plot("Typical", "typical.svg"),
-        // new Plot("Mean", "mean.svg"),
-        // new Plot("Std. Dev.", "SD.svg"),
-        // new Plot("Median", "median.svg"),
-        // new Plot("MAD", "MAD.svg"),
     ];
     if (measurements.absoluteEstimates.slope) {
         console.log('absoluteEstimates.slope!')
-        plotSlope(id, outputDirectory, measurements)
+        plotAdditional(id, outputDirectory, 'Slope', 'slope.svg', measurements.distributions.slope, measurements.absoluteEstimates.slope);
         additional_plots.push({url: 'slope.svg', name: 'Slope'})
         // additional_plots.push(new Plot("Slope", "slope.svg"));
     }
