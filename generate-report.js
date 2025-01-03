@@ -436,16 +436,13 @@ function gnuplot(script) {
     }
 }
 
-function pdf(id, context, measurements, size) {
-    throw "WIP";
-
+function plotPdf(id, outputDirectory, measurements) {
     let iterCounts = measurements.data.xs;
     let maxIters = Math.max(...iterCounts);
     let exponent = 3 * Math.floor(Math.log10(maxIters) / 3);
     let yLabel = exponent ? `Iterations (x 10^${exponent})` : "Iterations";
 
     let avg_times = measurements.avgTimes;
-    let [lost, lomt, himt, hist] = measurements.avgTimes.fences;
     let scaled_numbers = [...avg_times.sample.numbers];
     let typical = Math.max(...scaled_numbers);
     let unit = scaleValues(typical, scaled_numbers);
@@ -457,32 +454,36 @@ function pdf(id, context, measurements, size) {
         null,
         mean,
     );
+
+    let reportDir = path.join(outputDirectory, id.directoryName, "report");
+    fs.mkdirSync(reportDir, {recursive: true});
     let figurePath = path.join(
-        context.outputDirectory,
-        id.directoryName,
-        "report",
+        reportDir,
         "pdf.svg",
     );
 
     let min_x = Math.min(...xs);
     let max_x = Math.max(...xs);
     let max_y = Math.max(...ys) * 1.1;
+
     let script = `set output '${figurePath}'
-set title 'Fibonacci/Iterative'
+set title '${id.title}'
 set xtics nomirror
 set xlabel 'Average time (${unit})'
 set xrange [${min_x}:${max_x}]
+show xrange
 set ytics nomirror
-set ylabel '${yLabel}'
+set ylabel 'Iterations (x 10^${exponent})'
 set yrange [0:${max_y}]
 set y2tics nomirror
-set y2label 'Density (a.u.)'
 set key on outside top right Left reverse
 set terminal svg dynamic dashed size 1280, 720 font 'Helvetica'
 unset bars
 plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder lc rgb '#1f78b4' title 'PDF', \
      '-' using 1:2 with lines lt 2 lw 2 lc rgb '#1f78b4' title 'Mean', \
      '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.75 title '"Clean" sample', \
+     '-' using 1:2 with points lt 1 lc rgb '#ff7f00' pt 7 ps 0.75 title 'Mild Outliers', \
+     '-' using 1:2 with points lt 1 lc rgb '#e31a1c' pt 7 ps 0.75 title 'Severe Outliers', \
      '-' using 1:2 with lines lt 2 lw 2 lc rgb '#ff7f00' notitle, \
      '-' using 1:2 with lines lt 2 lw 2 lc rgb '#ff7f00' notitle, \
      '-' using 1:2 with lines lt 2 lw 2 lc rgb '#e31a1c' notitle, \
@@ -494,47 +495,75 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
     }
     script += "e\n";
 
-    // mean
     script += `${mean} ${mean_y}\n`;
     script += `${mean} 0\n`;
     script += "e\n";
 
-    // clean sample
+    let clean = [];
+    let mildOutliers = [];
+    let severeOutliers = [];
+
+    let [lost, lomt, himt, hist] = measurements.avgTimes.fences;
     for (let [n, x, y] of avg_times.sample.numbers.map((x, i) => [
         x,
         scaled_avg_times.numbers[i],
-        iterCounts[i],
+        ys[i]
     ])) {
         if (n < lost) {
-            // los += 1;
+            severeOutliers.push([x, y]);
         } else if (n > hist) {
-            // his += 1;
+            severeOutliers.push([x, y]);
         } else if (n < lomt) {
-            // lom += 1;
+            mildOutliers.push([x, y]);
         } else if (n > himt) {
-            // him += 1;
+            mildOutliers.push([x, y]);
         } else {
-            script += `${x} ${y}\n`;
+            clean.push([x, y]);
         }
+    }
+    for(let [x, y] of clean) {
+        script += `${x} ${y}\n`
+    }
+    script += "e\n";
+    for(let [x, y] of mildOutliers) {
+        script += `${x} ${y}\n`
+    }
+    script += "e\n";
+    for(let [x, y] of severeOutliers) {
+        script += `${x} ${y}\n`
     }
     script += "e\n";
 
-    // q1
+    let scaledFences = [...measurements.avgTimes.fences];
+    scaleValues(typical, scaledFences)
+    let [scaledLost, scaledLomt, scaledHimt, scaledHist] = scaledFences
 
-    // q3
+    // inner fences
+    script += `${scaledLomt} ${mean_y}\n`;
+    script += `${scaledLomt} 0\n`;
+    script += "e\n";
+    script += `${scaledHimt} ${mean_y}\n`;
+    script += `${scaledHimt} 0\n`;
+    script += "e\n";
 
-    // console.log(script);
+    // outer fences
+    script += `${scaledLost} ${mean_y}\n`;
+    script += `${scaledLost} 0\n`;
+    script += "e\n";
+    script += `${scaledHist} ${mean_y}\n`;
+    script += `${scaledHist} 0\n`;
+    script += "e\n";
+
     gnuplot(script);
 }
 
 function generate_plots(id, outputDirectory, measurements) {
     plotPdfSmall(id, outputDirectory, measurements)
-    // pdf(plot_ctx, plot_data);
+    plotPdf(id, outputDirectory, measurements)
 
     if (measurements.absoluteEstimates.slope) {
         plotRegressionSmall(id, outputDirectory, measurements)
         plotRegression(id, outputDirectory, measurements)
-        // regression(plot_ctx, plot_data);
     }
 
     //         self.plotter.borrow_mut().pdf(plot_ctx_small, plot_data);
