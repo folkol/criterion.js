@@ -629,7 +629,7 @@ function generateGroupReport(group, outputDirectory) {
     let groupId = group.groupReport.name;
     let reportDir = path.join(outputDirectory, groupId, 'report');
     fs.mkdirSync(reportDir, {recursive: true})
-    
+
     violin(groupId, outputDirectory, group)
 
     let context = {
@@ -639,7 +639,6 @@ function generateGroupReport(group, outputDirectory) {
         thumbnail_width: 450,
         thumbnail_height: 300,
 
-        // violin_plot: Some(plot_ctx.violin_path().to_string_lossy().into_owned()),
         // line_chart: line_path.map(|p| p.to_string_lossy().into_owned()),
 
         benchmarks: group.functionLinks,
