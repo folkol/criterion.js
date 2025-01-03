@@ -46,14 +46,11 @@ export function slugify(s) {
 
 export class BenchmarkId {
     constructor(groupId, functionId, measurements) {
-        if(process.env.CRITERION_ENV) {
-            functionId = `${functionId} (${process.env.CRITERION_ENV})`
-        }
         this.groupId = groupId;
         this.functionId = functionId;
         this.fullId = `${groupId}/${functionId}`;
         this.title = this.fullId;
-        this.directoryName = `${slugify(groupId)}/${slugify(functionId)}`
+        this.directoryName = `${slugify(groupId)}/${slugify(functionId)}`;
         this.measurements = measurements;
     }
 }
@@ -205,9 +202,11 @@ class BenchmarkGroup {
      * @param {...any} rest - Additional parameters for the benchmark function.
      */
     bench(name, f, ...rest) {
+        let criterionEnv = process.env.CRITERION_ENV;
+        let actualName = criterionEnv ? `${name} (${criterionEnv})` : name;
         let task = async () =>
             this.runBench(
-                new BenchmarkId(this.name, name),
+                new BenchmarkId(this.name, actualName),
                 () => blackbox(rest),
                 async (b, i) => await b.iter(f, ...i()),
             );
