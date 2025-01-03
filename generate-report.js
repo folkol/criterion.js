@@ -17,12 +17,12 @@ class Kde {
         let slice = this.sample.numbers;
         let h = this.bandwidth;
         let n = slice.length;
-        let sum = slice.reduce((acc, x_i) => acc + gauss((x - x_i) / h), 0);
+        let sum = slice.reduce((acc, x_i) => acc + gaussian((x - x_i) / h), 0);
         return sum / (h * n);
     }
 }
 
-function gauss(x) {
+function gaussian(x) {
     return 1 / Math.sqrt(Math.exp(x ** 2) * 2 * Math.PI);
 }
 
@@ -54,13 +54,7 @@ function sweepAndEstimate(sample, npoints, range, point_to_estimate) {
 }
 
 function plotPdfSmall(id, outputDirectory, measurements) {
-    let iterCounts = measurements.data.xs;
-    let maxIters = Math.max(...iterCounts);
-    let exponent = 3 * Math.floor(Math.log10(maxIters) / 3);
-    let yLabel = exponent ? `Iterations (x 10^${exponent})` : "Iterations";
-
     let avg_times = measurements.avgTimes;
-    let [lost, lomt, himt, hist] = measurements.avgTimes.fences;
     let scaled_numbers = [...avg_times.sample.numbers];
     let typical = Math.max(...scaled_numbers);
     let unit = scaleValues(typical, scaled_numbers);
@@ -198,7 +192,7 @@ function confidenceInterval(percentiles, confidenceLevel) {
     ];
 }
 
-function plotRegression(id, outputDirectory, measurements, size) {
+function plotRegression(id, outputDirectory, measurements) {
     let slopeEstimate = measurements.absoluteEstimates.slope;
     let slopeDist = measurements.distributions.slope;
     let [lb, ub] = confidenceInterval(
@@ -432,7 +426,6 @@ function plotPdf(id, outputDirectory, measurements) {
     let iterCounts = measurements.data.xs;
     let maxIters = Math.max(...iterCounts);
     let exponent = 3 * Math.floor(Math.log10(maxIters) / 3);
-    let yLabel = exponent ? `Iterations (x 10^${exponent})` : "Iterations";
 
     let avg_times = measurements.avgTimes;
     let scaled_numbers = [...avg_times.sample.numbers];
@@ -440,7 +433,7 @@ function plotPdf(id, outputDirectory, measurements) {
     let unit = scaleValues(typical, scaled_numbers);
     let scaled_avg_times = new Sample(scaled_numbers);
     let mean = scaled_avg_times.mean();
-    let [xs, ys, mean_y] = sweepAndEstimate(
+    let [xs, ys] = sweepAndEstimate(
         scaled_avg_times,
         500,
         null,
@@ -687,7 +680,7 @@ async function main() {
     for (let benchmark of benchmarkFiles) {
         let blob = fs.readFileSync(benchmark);
         let {id, measurements} = JSON.parse(blob);
-        let {groupId, functionId, valueString, throughput} = id;
+        let {groupId, functionId} = id;
 
         let internalBenchmarkId = new BenchmarkId(
             groupId, functionId, measurements,
