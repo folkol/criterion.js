@@ -702,10 +702,11 @@ async function main() {
     for (let benchmark of benchmarkFiles) {
         let blob = fs.readFileSync(benchmark);
         let {version, groupId, functionId, measurements, statistics} = JSON.parse(blob);
-        if(version < JsonReport.VERSION) {
-            console.error('benchmark data in old format, might not work as expected:', benchmark)
-        } else if(version !== JsonReport.VERSION) {
-            console.error('unknown benchmark data format, skipping:', benchmark)
+        if (version < JsonReport.VERSION || version === undefined) {
+            console.error('[WARN] benchmark data in old format, skipping:', benchmark)
+            continue;
+        } else if (version !== JsonReport.VERSION) {
+            console.error(`[WARN] unknown benchmark version '${version}', current version is '${JsonReport.VERSION}' skipping:`, benchmark)
             continue;
         }
         let measurementsReconstructed = reconstructMeasurements(measurements, statistics);
