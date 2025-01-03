@@ -173,14 +173,14 @@ async function main() {
     let benchmarkFiles = listBenchmarks(outputDir);
     console.log(`Found ${benchmarkFiles.length} benchmarks.`);
     let benchmarks = [];
-    for (let benchmark of benchmarkFiles) {
-        let blob = fs.readFileSync(benchmark);
+    for (let benchmarkFile of benchmarkFiles) {
+        let blob = fs.readFileSync(benchmarkFile);
         let {version, groupId, functionId, measurements, statistics} = JSON.parse(blob);
         if (version < JsonReport.VERSION || version === undefined) {
-            console.error('[WARN] benchmark data in old format, skipping:', benchmark)
+            console.error('[WARN] benchmark data in old format, skipping:', benchmarkFile)
             continue;
         } else if (version !== JsonReport.VERSION) {
-            console.error(`[WARN] unknown benchmark version '${version}', current version is '${JsonReport.VERSION}' skipping:`, benchmark)
+            console.error(`[WARN] unknown benchmark version '${version}', current version is '${JsonReport.VERSION}' skipping:`, benchmarkFile)
             continue;
         }
         let measurementsReconstructed = reconstructMeasurements(measurements, statistics);
