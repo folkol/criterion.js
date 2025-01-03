@@ -84,12 +84,8 @@ let templates = {
 
             {{#if this.functionLinks}}
             {{#if this.valueLinks}}
-<!--            <p>function ids and values!</p>-->
-<!--            {# Function ids and values #}-->
             <ul>
                             {{#each this.functionLinks }}
-<!--                            <th>{{!  call report_link with this }}</th>-->
-<!--                            <li>{{!  this }}</li>-->
                             <li>
                             {{#if this.pathOrNull}}
                             <a href="../../{{this.pathOrNull}}/report/index.html">{{this.name}}</a>
@@ -99,46 +95,8 @@ let templates = {
                             
                             </li>
                             {{/each}}
-
-<!--                        {{!#each this.valueGroups }}-->
-<!--                        <p>{{!this}}</p>-->
-<!--                            {{!this.name}}-->
-<!--                            {{!#each this.benchmarks}}-->
-<!--                                {{!#if this.pathOrNull}}-->
-<!--                                <a href="../{{!this.pathOrNull}}">{{!this.name}}</a>-->
-<!--                                {{!else}}-->
-<!--                                {{!this.name}}-->
-<!--                                {{!/if}}-->
-
-<!--                            {{!/each}}-->
-<!--                            {{! #each row.benchmarks }}-->
-<!--                            <td>{{!  call report_link with bench }}</td>-->
-<!--                            <li>{{!  this }}</li>-->
-<!--                            {{! /each}}-->
-
-<!--                        {{!/each}}-->
-            </ul>
-            {{else}}
-            <p>function ids but not values!</p>
-<!--            {# Function IDs but not values #}-->
-            <ul>
-<!--                {{! #each group.function_ids }}-->
-<!--                <li>{{!  call report_link with func }}</li>-->
-<!--                <li>{{! this}}</li>-->
-<!--                {{! /each}}-->
             </ul>
             {{/if}}
-<!--            {{! else}}-->
-<!--            {{! #if group.values }}-->
-<!--            {# Values but not function ids #}-->
-            <ul>
-<!--                {{! #each group.values }}-->
-<!--                <li>{{!  call report_link with val }}</li>-->
-<!--                <li>{{! this}}</li>-->
-<!--                {{! /each}}-->
-            </ul>
-<!--            {{! /each}}-->
-<!--            {{! /each}}-->
             {{/if}}
             {{/each}}
         </ul>
@@ -451,17 +409,10 @@ let templates = {
                             </a>
                         </td>
                         <td>
-<!--                            {{!#if this.regression_exists}}-->
                             <a href="../../../{{this.pathOrNull}}/report/regression.svg">
                                 <img src="../../../{{this.pathOrNull}}/report/regression_small.svg" alt="Regression" width="{{thumbnail_width}}"
                                     height="{thumbnail_height}" />
                             </a>
-<!--                            {{!else}}-->
-<!--                            <a href="{{this.path}}/report/iteration_times.svg">-->
-<!--                                <img src="{{this.pathOrNull}}/report/iteration_times_small.svg" alt="Iteration Times" width="{{thumbnail_width}}"-->
-<!--                                    height="{{thumbnail_height}}" />-->
-<!--                            </a>-->
-<!--                            {{!/if}}-->
                         </td>
                     </tr>
                 </tbody>
