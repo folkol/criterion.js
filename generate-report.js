@@ -495,7 +495,7 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
     }
     script += "e\n";
 
-    script += `${mean} ${mean_y}\n`;
+    script += `${mean} ${max_y}\n`;
     script += `${mean} 0\n`;
     script += "e\n";
 
@@ -539,18 +539,18 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
     let [scaledLost, scaledLomt, scaledHimt, scaledHist] = scaledFences
 
     // inner fences
-    script += `${scaledLomt} ${mean_y}\n`;
+    script += `${scaledLomt} ${max_y}\n`;
     script += `${scaledLomt} 0\n`;
     script += "e\n";
-    script += `${scaledHimt} ${mean_y}\n`;
+    script += `${scaledHimt} ${max_y}\n`;
     script += `${scaledHimt} 0\n`;
     script += "e\n";
 
     // outer fences
-    script += `${scaledLost} ${mean_y}\n`;
+    script += `${scaledLost} ${max_y}\n`;
     script += `${scaledLost} 0\n`;
     script += "e\n";
-    script += `${scaledHist} ${mean_y}\n`;
+    script += `${scaledHist} ${max_y}\n`;
     script += `${scaledHist} 0\n`;
     script += "e\n";
 
