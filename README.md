@@ -72,6 +72,15 @@ $ npx criterion-report ./criterion/
 
 ![CRITERION_ENV example](https://github.com/folkol/criterion.js/raw/master/criterion_env_example.png)
 
+## How do I interpret the regression plots?
+
+The Regression plot can be used to judge the quality of the sample. Each measurement will use increasingly higher iteration counts -- and the expectation is that the time for each sample goes up as the number of iterations increases. If this is not the case, the samples might not be independent -- or something happened that changed time per iteration (garbage collection pauses, optimizing compilation, something hogged the CPU, the laptop switched to battery power?). In any case, if the dots on the regression plot isn't very close to the line, be careful with interpreting the results.
+
+Here is an example where 'something' happened during the test. My guess is that the routine got optimized half-way through, and that we should re-run the test with a longer warmup time.
+![Unhealth](https://raw.githubusercontent.com/folkol/criterion.js/refs/heads/master/regression_compile.svg)
+![Health](https://raw.githubusercontent.com/folkol/criterion.js/refs/heads/master/regression_nocompile.svg)
+
+
 ## TODO
 
 - More plots!
