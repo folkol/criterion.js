@@ -323,7 +323,11 @@ export class JsonReport extends Report {
         let where = path.join(context.outputDirectory, id.directoryName);
         fs.mkdirSync(where, {recursive: true});
         let filePath = path.join(where, "benchmark.json");
-        fs.writeFileSync(filePath, JSON.stringify({id, measurements}));
+        fs.writeFileSync(filePath, JSON.stringify({
+            groupId: id.groupId,
+            functionId: id.functionId,
+            measurements
+        }));
     }
 }
 

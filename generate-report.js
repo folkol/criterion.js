@@ -671,8 +671,7 @@ async function main() {
     let benchmarks = [];
     for (let benchmark of benchmarkFiles) {
         let blob = fs.readFileSync(benchmark);
-        let {id, measurements} = JSON.parse(blob);
-        let {groupId, functionId} = id;
+        let {groupId, functionId, measurements} = JSON.parse(blob);
 
         let internalBenchmarkId = new BenchmarkId(
             groupId, functionId, measurements,
