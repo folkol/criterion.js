@@ -164,15 +164,11 @@ function reconstructMeasurements(measurements, statistics) {
     };
 }
 
-async function main() {
-    if (process.argv.length !== 3 || !fs.existsSync(process.argv[2])) {
-        console.error("usage: npx criterion-report path_to_criterion_folder");
-        process.exit(1);
-    }
-    let outputDir = process.argv[2];
-
+function loadBenchmarks(outputDir) {
     let benchmarkFiles = listBenchmarks(outputDir);
+
     console.log(`Found ${benchmarkFiles.length} benchmarks.`);
+
     let benchmarks = [];
     for (let benchmarkFile of benchmarkFiles) {
         let blob = fs.readFileSync(benchmarkFile);
@@ -194,8 +190,43 @@ async function main() {
     }
 
     benchmarks.sort((a, b) => a.fullId.localeCompare(b.fullId));
+
+    return benchmarks;
+}
+
+function writeFinalReport(outputDir, groups) {
+    let reportDir = path.join(outputDir, "report");
+    fs.mkdirSync(reportDir, {recursive: true});
+    let reportPath = path.join(reportDir, "index.html");
+
+    let context = {
+        groups: groups.map(group => ({
+            path: group.groupReport.pathOrNull,
+            name: group.groupReport.name,
+            benchmarks: group.functionLinks.map(f => ({
+                path: f.pathOrNull,
+                name: f.name
+            }))
+        }))
+    };
+
+    fs.writeFileSync(
+        reportPath,
+        renderTemplate("index", context),
+    );
+
+    console.log("Wrote", reportPath);
+}
+
+async function main() {
+    if (process.argv.length !== 3 || !fs.existsSync(process.argv[2])) {
+        console.error("usage: npx criterion-report path_to_criterion_folder");
+        process.exit(1);
+    }
+    let outputDir = process.argv[2];
+
     let idGroups = {};
-    for (let benchmark of benchmarks) {
+    for (let benchmark of loadBenchmarks(outputDir)) {
         let group = idGroups[benchmark.groupId] || [];
         group.push(benchmark);
         idGroups[benchmark.groupId] = group;
@@ -210,18 +241,7 @@ async function main() {
         generateGroupReport(group, outputDir);
     }
 
-    let reportDir = path.join(outputDir, "report");
-    fs.mkdirSync(reportDir, {recursive: true});
-    let reportPath = path.join(reportDir, "index.html");
-
-    fs.writeFileSync(
-        reportPath,
-        renderTemplate("index", {
-            groups,
-        }),
-    );
-
-    console.log("Wrote", reportPath);
+    writeFinalReport(outputDir, groups);
 }
 
 main();
