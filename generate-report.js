@@ -671,12 +671,78 @@ async function main() {
     let benchmarks = [];
     for (let benchmark of benchmarkFiles) {
         let blob = fs.readFileSync(benchmark);
-        let {groupId, functionId, measurements} = JSON.parse(blob);
+        let {groupId, functionId, measurements, statistics} = JSON.parse(blob);
+        let measurementsReconstructed = {
+            data: {
+                xs: measurements.iters,
+                ys: measurements.times,
+            },
+            avgTimes: {
+                fences: measurements.tukey,
+                sample: {
+                    numbers: measurements.averages,
+                }
+            },
+            absoluteEstimates: {
+                mean: {
+                    confidenceInterval: {
+                        confidenceLevel: statistics.mean.estimates.cl,
+                        lowerBound: statistics.mean.estimates.lb,
+                        upperBound: statistics.mean.estimates.ub
+                    },
+                    standardError: statistics.mean.se,
+                    pointEstimate: statistics.mean.point,
+                },
+                median: {
+                    confidenceInterval: {
+                        confidenceLevel: statistics.median.estimates.cl,
+                        lowerBound: statistics.median.estimates.lb,
+                        upperBound: statistics.median.estimates.ub
+                    },
+                    standardError: statistics.median.se,
+                    pointEstimate: statistics.median.point,
+                },
+                slope: {
+                    confidenceInterval: {
+                        confidenceLevel: statistics.slope.estimates.cl,
+                        lowerBound: statistics.slope.estimates.lb,
+                        upperBound: statistics.slope.estimates.ub
+                    },
+                    standardError: statistics.slope.se,
+                    pointEstimate: statistics.slope.point,
+                },
+                medianAbsDev: {
+                    confidenceInterval: {
+                        confidenceLevel: statistics.medianAbsDev.estimates.cl,
+                        lowerBound: statistics.medianAbsDev.estimates.lb,
+                        upperBound: statistics.medianAbsDev.estimates.ub
+                    },
+                    standardError: statistics.medianAbsDev.se,
+                    pointEstimate: statistics.medianAbsDev.point,
+                },
+                stdDev: {
+                    confidenceInterval: {
+                        confidenceLevel: statistics.stdDev.estimates.cl,
+                        lowerBound: statistics.stdDev.estimates.lb,
+                        upperBound: statistics.stdDev.estimates.ub
+                    },
+                    standardError: statistics.stdDev.se,
+                    pointEstimate: statistics.stdDev.point,
+                },
+            },
+            distributions: {
+                mean: {numbers: statistics.mean.bootstrap},
+                median: {numbers: statistics.median.bootstrap},
+                slope: {numbers: statistics.slope.bootstrap},
+                medianAbsDev: {numbers: statistics.medianAbsDev.bootstrap},
+                stdDev: {numbers: statistics.stdDev.bootstrap},
+            }
+        };
 
         let internalBenchmarkId = new BenchmarkId(
-            groupId, functionId, measurements,
+            groupId, functionId, measurementsReconstructed,
         );
-        generatePlotsAndReport(measurements, internalBenchmarkId, outputDir);
+        generatePlotsAndReport(measurementsReconstructed, internalBenchmarkId, outputDir);
         benchmarks.push(internalBenchmarkId);
     }
 

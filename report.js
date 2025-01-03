@@ -326,7 +326,64 @@ export class JsonReport extends Report {
         fs.writeFileSync(filePath, JSON.stringify({
             groupId: id.groupId,
             functionId: id.functionId,
-            measurements
+            measurements: {
+                iters: measurements.data.xs,
+                times: measurements.data.ys,
+                averages: measurements.avgTimes.sample.numbers,
+                tukey: measurements.avgTimes.fences,
+            },
+            statistics: {
+                mean: {
+                    estimates: {
+                        cl: measurements.absoluteEstimates.mean.confidenceInterval.confidenceLevel,
+                        lb: measurements.absoluteEstimates.mean.confidenceInterval.lowerBound,
+                        ub: measurements.absoluteEstimates.mean.confidenceInterval.upperBound,
+                        se: measurements.absoluteEstimates.mean.standardError,
+                        point: measurements.absoluteEstimates.mean.pointEstimate,
+                    },
+                    bootstrap: measurements.distributions.mean.numbers
+                },
+                median: {
+                    estimates: {
+                        cl: measurements.absoluteEstimates.mean.confidenceInterval.confidenceLevel,
+                        lb: measurements.absoluteEstimates.median.confidenceInterval.lowerBound,
+                        ub: measurements.absoluteEstimates.median.confidenceInterval.upperBound,
+                        se: measurements.absoluteEstimates.median.standardError,
+                        point: measurements.absoluteEstimates.median.pointEstimate,
+                    },
+                    bootstrap: measurements.distributions.median.numbers
+                },
+                medianAbsDev: {
+                    estimates: {
+                        cl: measurements.absoluteEstimates.mean.confidenceInterval.confidenceLevel,
+                        lb: measurements.absoluteEstimates.medianAbsDev.confidenceInterval.lowerBound,
+                        ub: measurements.absoluteEstimates.medianAbsDev.confidenceInterval.upperBound,
+                        se: measurements.absoluteEstimates.medianAbsDev.standardError,
+                        point: measurements.absoluteEstimates.medianAbsDev.pointEstimate,
+                    },
+                    bootstrap: measurements.distributions.medianAbsDev.numbers
+                },
+                slope: {
+                    estimates: {
+                        cl: measurements.absoluteEstimates.mean.confidenceInterval.confidenceLevel,
+                        lb: measurements.absoluteEstimates.slope.confidenceInterval.lowerBound,
+                        ub: measurements.absoluteEstimates.slope.confidenceInterval.upperBound,
+                        se: measurements.absoluteEstimates.slope.standardError,
+                        point: measurements.absoluteEstimates.slope.pointEstimate,
+                    },
+                    bootstrap: measurements.distributions.slope.numbers
+                },
+                stdDev: {
+                    estimates: {
+                        cl: measurements.absoluteEstimates.mean.confidenceInterval.confidenceLevel,
+                        lb: measurements.absoluteEstimates.stdDev.confidenceInterval.lowerBound,
+                        ub: measurements.absoluteEstimates.stdDev.confidenceInterval.upperBound,
+                        se: measurements.absoluteEstimates.stdDev.standardError,
+                        point: measurements.absoluteEstimates.stdDev.pointEstimate,
+                    },
+                    bootstrap: measurements.distributions.stdDev.numbers
+                },
+            }
         }));
     }
 }
