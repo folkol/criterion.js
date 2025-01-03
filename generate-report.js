@@ -7,14 +7,6 @@ import {Sample, Slope} from "./analysis.js";
 import child_process from "node:child_process";
 import {formatMeasurement, HtmlBenchmarkGroup, scaleValues} from "./report.js";
 
-class HtmlConfidenceInterval {
-    constructor(lower, point, upper) {
-        this.lower = lower;
-        this.point = point;
-        this.upper = upper;
-    }
-}
-
 class Kde {
     constructor(sample, bandwidth) {
         this.sample = sample;
@@ -521,15 +513,15 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
             clean.push([x, y]);
         }
     }
-    for(let [x, y] of clean) {
+    for (let [x, y] of clean) {
         script += `${x} ${y}\n`
     }
     script += "e\n";
-    for(let [x, y] of mildOutliers) {
+    for (let [x, y] of mildOutliers) {
         script += `${x} ${y}\n`
     }
     script += "e\n";
-    for(let [x, y] of severeOutliers) {
+    for (let [x, y] of severeOutliers) {
         script += `${x} ${y}\n`
     }
     script += "e\n";
@@ -557,79 +549,6 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
     gnuplot(script);
 }
 
-function generate_plots(id, outputDirectory, measurements) {
-    plotPdfSmall(id, outputDirectory, measurements)
-    plotPdf(id, outputDirectory, measurements)
-
-    if (measurements.absoluteEstimates.slope) {
-        plotRegressionSmall(id, outputDirectory, measurements)
-        plotRegression(id, outputDirectory, measurements)
-    }
-
-    //         self.plotter.borrow_mut().pdf(plot_ctx_small, plot_data);
-    //         if measurements.absolute_estimates.slope.is_some() {
-    //             self.plotter.borrow_mut().regression(plot_ctx, plot_data);
-    //             self.plotter
-    //                 .borrow_mut()
-    //                 .regression(plot_ctx_small, plot_data);
-    //         } else {
-    //             self.plotter
-    //                 .borrow_mut()
-    //                 .iteration_times(plot_ctx, plot_data);
-    //             self.plotter
-    //                 .borrow_mut()
-    //                 .iteration_times(plot_ctx_small, plot_data);
-    //         }
-    //
-    //         self.plotter
-    //             .borrow_mut()
-    //             .abs_distributions(plot_ctx, plot_data);
-    //
-    //         if let Some(ref comp) = measurements.comparison {
-    //             try_else_return!({
-    //                 let mut change_dir = context.output_directory.clone();
-    //                 change_dir.push(id.as_directory_name());
-    //                 change_dir.push("report");
-    //                 change_dir.push("change");
-    //                 fs::mkdirp(&change_dir)
-    //             });
-    //
-    //             try_else_return!({
-    //                 let mut both_dir = context.output_directory.clone();
-    //                 both_dir.push(id.as_directory_name());
-    //                 both_dir.push("report");
-    //                 both_dir.push("both");
-    //                 fs::mkdirp(&both_dir)
-    //             });
-    //
-    //             let comp_data = plot_data.comparison(comp);
-    //
-    //             self.plotter.borrow_mut().pdf(plot_ctx, comp_data);
-    //             self.plotter.borrow_mut().pdf(plot_ctx_small, comp_data);
-    //             if measurements.absolute_estimates.slope.is_some()
-    //                 && comp.base_estimates.slope.is_some()
-    //             {
-    //                 self.plotter.borrow_mut().regression(plot_ctx, comp_data);
-    //                 self.plotter
-    //                     .borrow_mut()
-    //                     .regression(plot_ctx_small, comp_data);
-    //             } else {
-    //                 self.plotter
-    //                     .borrow_mut()
-    //                     .iteration_times(plot_ctx, comp_data);
-    //                 self.plotter
-    //                     .borrow_mut()
-    //                     .iteration_times(plot_ctx_small, comp_data);
-    //             }
-    //             self.plotter.borrow_mut().t_test(plot_ctx, comp_data);
-    //             self.plotter
-    //                 .borrow_mut()
-    //                 .rel_distributions(plot_ctx, comp_data);
-    //         }
-    //
-    //         self.plotter.borrow_mut().wait();
-}
-
 function generatePlotsAndReport(
     measurements,
     id,
@@ -642,16 +561,22 @@ function generatePlotsAndReport(
 
     let time_interval = (est) => {
         let {lowerBound, upperBound} = est.confidenceInterval;
-        return new HtmlConfidenceInterval(
-            formatMeasurement(lowerBound),
-            formatMeasurement(est.pointEstimate),
-            formatMeasurement(upperBound),
-        );
+        return {
+            lower: formatMeasurement(lowerBound),
+            point: formatMeasurement(est.pointEstimate),
+            upper: formatMeasurement(upperBound),
+        }
     };
 
     let data = measurements.data;
 
-    generate_plots(id, outputDirectory, measurements);
+    plotPdfSmall(id, outputDirectory, measurements)
+    plotPdf(id, outputDirectory, measurements)
+
+    if (measurements.absoluteEstimates.slope) {
+        plotRegressionSmall(id, outputDirectory, measurements)
+        plotRegression(id, outputDirectory, measurements)
+    }
 
     plotAdditional(id, outputDirectory, 'Mean', 'mean.svg', measurements.distributions.mean, measurements.absoluteEstimates.mean);
     plotAdditional(id, outputDirectory, 'Median', 'median.svg', measurements.distributions.median, measurements.absoluteEstimates.median);
@@ -667,7 +592,6 @@ function generatePlotsAndReport(
     if (measurements.absoluteEstimates.slope) {
         plotAdditional(id, outputDirectory, 'Slope', 'slope.svg', measurements.distributions.slope, measurements.absoluteEstimates.slope);
         additional_plots.push({url: 'slope.svg', name: 'Slope'})
-        // additional_plots.push(new Plot("Slope", "slope.svg"));
     }
 
     let context = {
@@ -684,17 +608,17 @@ function generatePlotsAndReport(
         median: time_interval(measurements.absoluteEstimates.median),
         mad: time_interval(measurements.absoluteEstimates.medianAbsDev),
         std_dev: time_interval(measurements.absoluteEstimates.stdDev),
-        r2: new HtmlConfidenceInterval(
-            Slope.rSquared(
+        r2: {
+            lower: Slope.rSquared(
                 typical_estimate.confidenceInterval.lowerBound,
                 data,
             ).toFixed(7),
-            Slope.rSquared(typical_estimate.pointEstimate, data).toFixed(7),
-            Slope.rSquared(
+            point: Slope.rSquared(typical_estimate.pointEstimate, data).toFixed(7),
+            upper: Slope.rSquared(
                 typical_estimate.confidenceInterval.upperBound,
                 data,
             ).toFixed(7),
-        ),
+        },
         additional_plots,
         comparison: null,
     };
