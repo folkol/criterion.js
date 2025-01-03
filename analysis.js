@@ -294,17 +294,15 @@ export class Slope {
     }
 }
 
-class MeasurementData {
-    constructor(data, labeledSample, absoluteEstimates, distributions) {
-        this.data = data;
-        this.avgTimes = labeledSample;
-        this.absoluteEstimates = absoluteEstimates;
-        this.distributions = distributions;
-    }
-}
-
 class ReportData {
-    constructor(id, measurements) {
+    constructor(id, iters, times, labeledSample, estimates, distributions) {
+        let measurements = {
+            data: new Data(iters, times),
+            avgTimes: labeledSample,
+            absoluteEstimates: estimates,
+            distributions: distributions
+        };
+
         this.groupId = id.groupId;
         this.functionId = id.functionId;
         this.measurements = {
@@ -407,14 +405,7 @@ export async function common(
     estimates.slope = slope;
     distributions.slope = distribution;
 
-    let measurements = new MeasurementData(
-        new Data(iters, times),
-        labeledSample,
-        estimates,
-        distributions,
-    )
-
-    let reportData = new ReportData(id, measurements);
+    let reportData = new ReportData(id, iters, times, labeledSample, estimates, distributions);
 
     criterion.report.measurementComplete(
         id,
