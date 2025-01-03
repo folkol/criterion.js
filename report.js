@@ -354,9 +354,9 @@ export class Reporter extends Report {
         );
     }
 
-    measurementComplete(id, context, measurements) {
+    measurementComplete(id, context, reportData) {
         this.reporters.forEach((reporter) =>
-            reporter.measurementComplete(id, context, measurements),
+            reporter.measurementComplete(id, context, reportData),
         );
     }
 }

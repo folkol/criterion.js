@@ -295,74 +295,27 @@ export class Slope {
 }
 
 class ReportData {
-    constructor(id, iters, times, labeledSample, estimates, distributions) {
-        let measurements = {
-            data: new Data(iters, times),
-            avgTimes: labeledSample,
-            absoluteEstimates: estimates,
-            distributions: distributions
-        };
-
+    constructor(id, iters, times, averages, tukey, estimates, distributions) {
         this.groupId = id.groupId;
         this.functionId = id.functionId;
         this.measurements = {
-            iters: measurements.data.xs,
-            times: measurements.data.ys,
-            averages: measurements.avgTimes.sample.numbers,
-            tukey: measurements.avgTimes.fences,
+            iters,
+            times,
+            averages,
+            tukey,
         };
-        this.statistics = {
-            mean: {
+        this.statistics = Object.fromEntries(Object.keys(estimates).map(statistic => [
+            statistic, {
                 estimates: {
-                    cl: measurements.absoluteEstimates.mean.confidenceInterval.confidenceLevel,
-                    lb: measurements.absoluteEstimates.mean.confidenceInterval.lowerBound,
-                    ub: measurements.absoluteEstimates.mean.confidenceInterval.upperBound,
-                    se: measurements.absoluteEstimates.mean.standardError,
-                    point: measurements.absoluteEstimates.mean.pointEstimate,
+                    cl: estimates[statistic].confidenceInterval.confidenceLevel,
+                    lb: estimates[statistic].confidenceInterval.lowerBound,
+                    ub: estimates[statistic].confidenceInterval.upperBound,
+                    se: estimates[statistic].standardError,
+                    point: estimates[statistic].pointEstimate,
                 },
-                bootstrap: measurements.distributions.mean.numbers
-            },
-            median: {
-                estimates: {
-                    cl: measurements.absoluteEstimates.mean.confidenceInterval.confidenceLevel,
-                    lb: measurements.absoluteEstimates.median.confidenceInterval.lowerBound,
-                    ub: measurements.absoluteEstimates.median.confidenceInterval.upperBound,
-                    se: measurements.absoluteEstimates.median.standardError,
-                    point: measurements.absoluteEstimates.median.pointEstimate,
-                },
-                bootstrap: measurements.distributions.median.numbers
-            },
-            medianAbsDev: {
-                estimates: {
-                    cl: measurements.absoluteEstimates.mean.confidenceInterval.confidenceLevel,
-                    lb: measurements.absoluteEstimates.medianAbsDev.confidenceInterval.lowerBound,
-                    ub: measurements.absoluteEstimates.medianAbsDev.confidenceInterval.upperBound,
-                    se: measurements.absoluteEstimates.medianAbsDev.standardError,
-                    point: measurements.absoluteEstimates.medianAbsDev.pointEstimate,
-                },
-                bootstrap: measurements.distributions.medianAbsDev.numbers
-            },
-            slope: {
-                estimates: {
-                    cl: measurements.absoluteEstimates.mean.confidenceInterval.confidenceLevel,
-                    lb: measurements.absoluteEstimates.slope.confidenceInterval.lowerBound,
-                    ub: measurements.absoluteEstimates.slope.confidenceInterval.upperBound,
-                    se: measurements.absoluteEstimates.slope.standardError,
-                    point: measurements.absoluteEstimates.slope.pointEstimate,
-                },
-                bootstrap: measurements.distributions.slope.numbers
-            },
-            stdDev: {
-                estimates: {
-                    cl: measurements.absoluteEstimates.mean.confidenceInterval.confidenceLevel,
-                    lb: measurements.absoluteEstimates.stdDev.confidenceInterval.lowerBound,
-                    ub: measurements.absoluteEstimates.stdDev.confidenceInterval.upperBound,
-                    se: measurements.absoluteEstimates.stdDev.standardError,
-                    point: measurements.absoluteEstimates.stdDev.pointEstimate,
-                },
-                bootstrap: measurements.distributions.stdDev.numbers
-            },
-        }
+                bootstrap: distributions[statistic].numbers
+            }
+        ]));
     }
 }
 
@@ -405,7 +358,15 @@ export async function common(
     estimates.slope = slope;
     distributions.slope = distribution;
 
-    let reportData = new ReportData(id, iters, times, labeledSample, estimates, distributions);
+    let reportData = new ReportData(
+        id,
+        iters,
+        times,
+        labeledSample.sample.numbers,
+        labeledSample.fences,
+        estimates,
+        distributions
+    );
 
     criterion.report.measurementComplete(
         id,
