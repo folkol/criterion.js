@@ -8,16 +8,16 @@ import child_process from "node:child_process";
 import {formatMeasurement, HtmlBenchmarkGroup, scaleValues} from "./report.js";
 
 class Kde {
-    constructor(sample, bandwidth) {
+    constructor(sample) {
         this.sample = sample;
-        this.bandwidth = bandwidth;
+        this.bandwidth = silverman(sample);
     }
 
     estimate(x) {
-        let slice = this.sample.numbers;
+        let xs = this.sample.numbers;
         let h = this.bandwidth;
-        let n = slice.length;
-        let sum = slice.reduce((acc, x_i) => acc + gaussian((x - x_i) / h), 0);
+        let n = xs.length;
+        let sum = xs.reduce((acc, x_i) => acc + gaussian((x - x_i) / h), 0);
         return sum / (h * n);
     }
 }
@@ -35,21 +35,23 @@ function silverman(sample) {
     return sigma * (factor / n) ** exponent;
 }
 
-function sweepAndEstimate(sample, npoints, range, point_to_estimate) {
+function sweepAndEstimate(sample, range, point_to_estimate) {
+    let numPoints = 500;
     let xMin = Math.min(...sample.numbers);
     let xMax = Math.max(...sample.numbers);
 
-    let kde = new Kde(sample, silverman(sample));
+    let kde = new Kde(sample);
     let h = kde.bandwidth;
     let [start, end] = range ? range : [xMin - 3 * h, xMax + 3 * h];
-    let xs = [];
 
-    let step_size = (end - start) / (npoints - 1);
-    for (let i = 0; i < npoints; i++) {
+    let xs = [];
+    let step_size = (end - start) / (numPoints - 1);
+    for (let i = 0; i < numPoints; i++) {
         xs.push(start + step_size * i);
     }
-    let ys = xs.map((x) => kde.estimate(x));
+    let ys = xs.map(x => kde.estimate(x));
     let point_estimate = kde.estimate(point_to_estimate);
+
     return [xs, ys, point_estimate];
 }
 
@@ -60,12 +62,7 @@ function plotPdfSmall(id, outputDirectory, measurements) {
     let unit = scaleValues(typical, scaled_numbers);
     let scaled_avg_times = new Sample(scaled_numbers);
     let mean = scaled_avg_times.mean();
-    let [xs, ys, mean_y] = sweepAndEstimate(
-        scaled_avg_times,
-        500,
-        null,
-        mean,
-    );
+    let [xs, ys, mean_y] = sweepAndEstimate(scaled_avg_times, null, mean);
 
     let reportDir = path.join(outputDirectory, id.directoryName, "report");
     fs.mkdirSync(reportDir, {recursive: true});
@@ -118,7 +115,7 @@ function plotAdditional(id, outputDirectory, statistic, filename, distribution, 
     scaleValues(typical, scaled_xs);
     let scaled_xs_sample = new Sample(scaled_xs);
 
-    let [kde_xs, ys] = sweepAndEstimate(scaled_xs_sample, 500, [start, end]);
+    let [kde_xs, ys] = sweepAndEstimate(scaled_xs_sample, [start, end]);
 
     // interpolate between two points of the KDE sweep to find the Y position at the point estimate.
     let n_point = kde_xs.length - 1;
@@ -327,7 +324,7 @@ function plotViolin(id, outputDirectory, measurements) {
     let allCurves = Object.values(measurements.measurements).map(x => new Sample(x.avgTimes.sample.numbers));
 
     let kdes = allCurves.map(avgTimes => {
-        let [xs, ys] = sweepAndEstimate(avgTimes, 500, null, avgTimes[0]);
+        let [xs, ys] = sweepAndEstimate(avgTimes, null, avgTimes[0]);
         let yMax = Math.max(...ys);
         let ysNormalized = ys.map(y => y / yMax);
         return [xs, ysNormalized];
@@ -433,12 +430,7 @@ function plotPdf(id, outputDirectory, measurements) {
     let unit = scaleValues(typical, scaled_numbers);
     let scaled_avg_times = new Sample(scaled_numbers);
     let mean = scaled_avg_times.mean();
-    let [xs, ys] = sweepAndEstimate(
-        scaled_avg_times,
-        500,
-        null,
-        mean,
-    );
+    let [xs, ys] = sweepAndEstimate(scaled_avg_times, null, mean);
 
     let reportDir = path.join(outputDirectory, id.directoryName, "report");
     fs.mkdirSync(reportDir, {recursive: true});
