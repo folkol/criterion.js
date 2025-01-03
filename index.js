@@ -40,13 +40,17 @@ class Bencher {
     }
 }
 
+export function slugify(s) {
+    return s.replaceAll(/\W/g, '_')
+}
+
 export class BenchmarkId {
     constructor(groupId, functionId, measurements) {
         this.groupId = groupId;
         this.functionId = functionId;
         this.fullId = `${groupId}/${functionId}`;
         this.title = this.fullId;
-        this.directoryName = this.fullId; // TODO slug?
+        this.directoryName = `${slugify(groupId)}/${slugify(functionId)}`
         this.measurements = measurements;
     }
 }

@@ -1,6 +1,7 @@
 import {Slope} from "./analysis.js";
 import path from 'node:path';
 import fs from 'node:fs';
+import {slugify} from "./index.js";
 
 export class Report {
     benchmarkStart(_id, _context) {
@@ -213,7 +214,7 @@ class ReportLink {
     }
 
     static group(outputDir, groupId) {
-        let reportPath = path.join(outputDir, groupId, "report", "index.html");
+        let reportPath = path.join(outputDir, slugify(groupId), "report", "index.html");
         // let pathOrNull = fs.existsSync(reportPath) ? reportPath : null;
         return new ReportLink(groupId, reportPath);
     }
@@ -225,13 +226,13 @@ class ReportLink {
     }
 
     static value(outputDir, groupId, value) {
-        let reportPath = path.join(outputDir, groupId, value);
+        let reportPath = path.join(outputDir, slugify(groupId), slugify(value));
         let pathOrNull = fs.existsSync(reportPath) ? reportPath : null;
         return new ReportLink(value, pathOrNull);
     }
 
     static function(outputDir, groupId, f) {
-        let pathOrNull = path.join(outputDir, groupId, f);
+        let pathOrNull = path.join(outputDir, slugify(groupId), slugify(f));
         return new ReportLink(f, pathOrNull);
     }
 }
@@ -258,7 +259,7 @@ export class HtmlBenchmarkGroup {
         let functionIds = [];
         let functionMeasurements = {};
         let values = [];
-        let individualLinks = new Map();
+        let individualLinks = new Map;
         for (let id of group) {
             let functionId = id.functionId;
             let value = id.value;
