@@ -445,14 +445,14 @@ let templates = {
                 <tbody>
                     <tr>
                         <td>
-                            <a href="../{{this.path}}/report/pdf.svg">
+                            <a href="../../../{{this.pathOrNull}}/report/pdf.svg">
                                 <img src="../../../{{this.pathOrNull}}/report/pdf_small.svg" alt="PDF of Slope" width="{{thumbnail_width}}"
                                     height="{{thumbnail_height}}" />
                             </a>
                         </td>
                         <td>
 <!--                            {{!#if this.regression_exists}}-->
-                            <a href="../{{this.path}}/report/regression.svg">
+                            <a href="../../../{{this.pathOrNull}}/report/regression.svg">
                                 <img src="../../../{{this.pathOrNull}}/report/regression_small.svg" alt="Regression" width="{{thumbnail_width}}"
                                     height="{thumbnail_height}" />
                             </a>
