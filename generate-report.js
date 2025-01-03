@@ -10,10 +10,13 @@ import {GnuPlotter} from "./gnuplotter.js";
 
 function generatePlotsAndReport(
     measurements,
-    id,
+    title,
     outputDirectory,
 ) {
-    console.log('generating plots and report for', id.title);
+    console.log('generating plots and report for', title);
+    let reportDir = path.join(outputDirectory, "report");
+    fs.mkdirSync(reportDir, {recursive: true});
+
     let estimates = measurements.absoluteEstimates;
     let distributions = measurements.distributions;
 
@@ -32,17 +35,17 @@ function generatePlotsAndReport(
 
     let data = measurements.data;
 
-    GnuPlotter.pdfSmall(id, outputDirectory, measurements)
-    GnuPlotter.pdf(id, outputDirectory, measurements)
+    GnuPlotter.pdfSmall(reportDir, measurements);
+    GnuPlotter.pdf(title, reportDir, measurements);
 
-    GnuPlotter.regressionSmall(id, outputDirectory, measurements)
-    GnuPlotter.regression(id, outputDirectory, measurements)
+    GnuPlotter.regressionSmall(reportDir, measurements);
+    GnuPlotter.regression(title, reportDir, measurements);
 
-    GnuPlotter.statistic(id, outputDirectory, 'Mean', 'mean.svg', distributions.mean, estimates.mean);
-    GnuPlotter.statistic(id, outputDirectory, 'Median', 'median.svg', distributions.median, estimates.median);
-    GnuPlotter.statistic(id, outputDirectory, 'Std. Dev.', 'stdDev.svg', distributions.stdDev, estimates.stdDev);
-    GnuPlotter.statistic(id, outputDirectory, 'MAD', 'mad.svg', distributions.medianAbsDev, estimates.medianAbsDev);
-    GnuPlotter.statistic(id, outputDirectory, 'Slope', 'slope.svg', distributions.slope, estimates.slope);
+    GnuPlotter.statistic(title, reportDir, 'Mean', 'mean.svg', distributions.mean, estimates.mean);
+    GnuPlotter.statistic(title, reportDir, 'Median', 'median.svg', distributions.median, estimates.median);
+    GnuPlotter.statistic(title, reportDir, 'Std. Dev.', 'stdDev.svg', distributions.stdDev, estimates.stdDev);
+    GnuPlotter.statistic(title, reportDir, 'MAD', 'mad.svg', distributions.medianAbsDev, estimates.medianAbsDev);
+    GnuPlotter.statistic(title, reportDir, 'Slope', 'slope.svg', distributions.slope, estimates.slope);
 
     let additional_plots = [
         {url: 'mean.svg', name: 'Mean'},
@@ -54,7 +57,7 @@ function generatePlotsAndReport(
     ];
 
     let context = {
-        title: id.title,
+        title: title,
         confidence:
             typical_estimate.confidenceInterval.confidenceLevel.toFixed(2),
         thumbnail_width: 450,
@@ -82,8 +85,6 @@ function generatePlotsAndReport(
         comparison: null,
     };
 
-    let reportDir = path.join(outputDirectory, id.directoryName, "report");
-    fs.mkdirSync(reportDir, {recursive: true});
     let report_path = path.join(reportDir, "index.html");
     let output = renderTemplate("benchmark_report", context);
     fs.writeFileSync(report_path, output);
@@ -114,7 +115,7 @@ function generateGroupReport(group, outputDirectory) {
     let reportDir = path.join(outputDirectory, slugify(groupId), 'report');
     fs.mkdirSync(reportDir, {recursive: true})
 
-    GnuPlotter.violin(groupId, outputDirectory, group)
+    GnuPlotter.violin(reportDir, group);
 
     let context = {
         group_id: group.groupReport.name,
@@ -188,7 +189,7 @@ async function main() {
         let internalBenchmarkId = new BenchmarkId(
             groupId, functionId, measurementsReconstructed,
         );
-        generatePlotsAndReport(measurementsReconstructed, internalBenchmarkId, outputDir);
+        generatePlotsAndReport(measurementsReconstructed, internalBenchmarkId.title, path.join(outputDir, internalBenchmarkId.directoryName));
         benchmarks.push(internalBenchmarkId);
     }
 

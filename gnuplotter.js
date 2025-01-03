@@ -1,13 +1,12 @@
 import {scaleValues} from "./report.js";
 import {Sample, Slope} from "./analysis.js";
-import {slugify} from "./index.js";
 import fs from "node:fs";
 import path from "node:path";
 import child_process from "node:child_process";
 
 export class GnuPlotter {
 
-    static pdf(id, outputDirectory, measurements) {
+    static pdf(title, reportDir, measurements) {
         let iterCounts = measurements.data.xs;
         let maxIters = iterCounts.reduce((acc, x) => Math.max(acc, x));
         let exponent = 3 * Math.floor(Math.log10(maxIters) / 3);
@@ -20,19 +19,14 @@ export class GnuPlotter {
         let mean = scaled_avg_times.mean();
         let [xs, ys] = sweepAndEstimate(scaled_avg_times, null, mean);
 
-        let reportDir = path.join(outputDirectory, id.directoryName, "report");
-        fs.mkdirSync(reportDir, {recursive: true});
-        let figurePath = path.join(
-            reportDir,
-            "pdf.svg",
-        );
+        let figurePath = path.join(reportDir, "pdf.svg");
 
         let min_x = xs.reduce((acc, x) => Math.min(acc, x));
         let max_x = xs.reduce((acc, x) => Math.max(acc, x));
         let max_y = ys.reduce((acc, y) => Math.max(acc, y)) * 1.1;
 
         let script = `set output '${figurePath}'
-set title '${id.title}'
+set title '${title}'
 set xtics nomirror
 set xlabel 'Average time (${unit})'
 set xrange [${min_x}:${max_x}]
@@ -122,7 +116,7 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
         GnuPlotter.doPlot(script);
     }
 
-    static pdfSmall(id, outputDirectory, measurements) {
+    static pdfSmall(reportDir, measurements) {
         let avg_times = measurements.avgTimes;
         let scaled_numbers = [...avg_times.sample.numbers];
         let typical = scaled_numbers.reduce((acc, x) => Math.max(acc, x));
@@ -131,12 +125,7 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
         let mean = scaled_avg_times.mean();
         let [xs, ys, mean_y] = sweepAndEstimate(scaled_avg_times, null, mean);
 
-        let reportDir = path.join(outputDirectory, id.directoryName, "report");
-        fs.mkdirSync(reportDir, {recursive: true});
-        let figurePath = path.join(
-            reportDir,
-            "pdf_small.svg",
-        );
+        let figurePath = path.join(reportDir, "pdf_small.svg");
 
         let min_x = xs.reduce((acc, x) => Math.min(acc, x));
         let max_x = xs.reduce((acc, x) => Math.max(acc, x));
@@ -169,7 +158,7 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
     }
 
 
-    static regressionSmall(id, outputDirectory, measurements) {
+    static regressionSmall(reportDir, measurements) {
         let slopeEstimate = measurements.absoluteEstimates.slope;
         let slopeDist = measurements.distributions.slope;
         let [lb, ub] = confidenceInterval(
@@ -196,12 +185,7 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
         let x_label =
             exponent === 0 ? "Iterations" : `Iterations (x 10^${exponent})`;
 
-        let figurePath = path.join(
-            outputDirectory,
-            id.directoryName,
-            "report",
-            "regression_small.svg",
-        );
+        let figurePath = path.join(reportDir, "regression_small.svg");
 
         let script = `set output '${figurePath}'
 set xtics nomirror 
@@ -238,7 +222,7 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
     }
 
 
-    static regression(id, outputDirectory, measurements) {
+    static regression(title, reportDir, measurements) {
         let slopeEstimate = measurements.absoluteEstimates.slope;
         let slopeDist = measurements.distributions.slope;
         let [lb, ub] = confidenceInterval(
@@ -265,15 +249,10 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
         let x_label =
             exponent === 0 ? "Iterations" : `Iterations (x 10^${exponent})`;
 
-        let figurePath = path.join(
-            outputDirectory,
-            id.directoryName,
-            "report",
-            "regression.svg",
-        );
+        let figurePath = path.join(reportDir, "regression.svg");
 
         let script = `set output '${figurePath}'
-set title '${id.title}'
+set title '${title}'
 set xtics nomirror 
 set xlabel '${x_label}'
 set grid xtics
@@ -309,7 +288,7 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
 
     function
 
-    static statistic(id, outputDirectory, statistic, filename, distribution, estimate) {
+    static statistic(title, reportDir, statistic, filename, distribution, estimate) {
         let ci = estimate.confidenceInterval;
         let typical = ci.upperBound;
         let ci_values = [ci.lowerBound, ci.upperBound, estimate.pointEstimate];
@@ -344,21 +323,15 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
 
         let kde_xs_sample = new Sample(kde_xs);
 
-        let title = `${id.title}: ${statistic}`;
         let [xMin, xMax] = [
             kde_xs_sample.numbers.reduce((acc, x) => Math.min(acc, x)),
             kde_xs_sample.numbers.reduce((acc, x) => Math.max(acc, x))
         ];
 
-        let reportDir = path.join(outputDirectory, id.directoryName, "report");
-        fs.mkdirSync(reportDir, {recursive: true});
-        let figurePath = path.join(
-            reportDir,
-            filename,
-        );
+        let figurePath = path.join(reportDir, filename);
 
         let script = `set output '${figurePath}'
-set title '${title}'
+set title '${title}: ${statistic}'
 set xtics nomirror
 set xlabel 'Average time (${unit})'
 set xrange [${xMin}:${xMax}]
@@ -389,7 +362,7 @@ plot '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Bootstrap distri
         GnuPlotter.doPlot(script);
     }
 
-    static violin(id, outputDirectory, measurements) {
+    static violin(reportDir, measurements) {
         let allCurves = Object.values(measurements.measurements).map(x => new Sample(x.avgTimes.sample.numbers));
 
         let kdes = allCurves.map(avgTimes => {
@@ -412,12 +385,7 @@ plot '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Bootstrap distri
         let scale = [1.0];
         let unit = scaleValues((min + max) / 2, scale);
 
-        let figurePath = path.join(
-            outputDirectory,
-            slugify(id),
-            "report",
-            "violin.svg",
-        );
+        let figurePath = path.join(reportDir, "violin.svg");
 
         let plotCommands = []
         for (let i = 0; i < kdes.length; i++) {
