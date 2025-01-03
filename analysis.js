@@ -242,10 +242,6 @@ class Estimates {
         this.stdDev = stdDev;
     }
 
-    typical() {
-        return this.slope ?? this.mean;
-    }
-
     static build(distributions, points, cl) {
         function toEstimate(pointEstimate, distribution) {
             let [lb, ub] = distribution.confidenceInterval(cl);

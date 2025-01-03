@@ -312,15 +312,19 @@ export class HtmlBenchmarkGroup {
 }
 
 export class JsonReport extends Report {
+
+    static VERSION = 2;
+
     constructor() {
         super();
     }
 
     measurementComplete(id, context, reportData) {
+        let version = JsonReport.VERSION;
         let where = path.join(context.outputDirectory, id.directoryName);
         fs.mkdirSync(where, {recursive: true});
         let filePath = path.join(where, "benchmark.json");
-        fs.writeFileSync(filePath, JSON.stringify(reportData));
+        fs.writeFileSync(filePath, JSON.stringify({version, ...reportData}));
     }
 }
 

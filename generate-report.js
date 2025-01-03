@@ -5,7 +5,7 @@ import {BenchmarkId, slugify} from "./index.js";
 import {renderTemplate} from "./templates.js";
 import {Sample, Slope} from "./analysis.js";
 import child_process from "node:child_process";
-import {formatMeasurement, HtmlBenchmarkGroup, scaleValues} from "./report.js";
+import {formatMeasurement, HtmlBenchmarkGroup, JsonReport, scaleValues} from "./report.js";
 
 class Kde {
     constructor(sample) {
@@ -701,7 +701,13 @@ async function main() {
     let benchmarks = [];
     for (let benchmark of benchmarkFiles) {
         let blob = fs.readFileSync(benchmark);
-        let {groupId, functionId, measurements, statistics} = JSON.parse(blob);
+        let {version, groupId, functionId, measurements, statistics} = JSON.parse(blob);
+        if(version < JsonReport.VERSION) {
+            console.error('benchmark data in old format, might not work as expected:', benchmark)
+        } else if(version !== JsonReport.VERSION) {
+            console.error('unknown benchmark data format, skipping:', benchmark)
+            continue;
+        }
         let measurementsReconstructed = reconstructMeasurements(measurements, statistics);
 
         let internalBenchmarkId = new BenchmarkId(
