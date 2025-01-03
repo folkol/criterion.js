@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import {BenchmarkId} from "./index.js";
+import {BenchmarkId, slugify} from "./index.js";
 import {renderTemplate} from "./templates.js";
 import {Sample, Slope} from "./analysis.js";
 import child_process from "node:child_process";
@@ -362,7 +362,7 @@ function plotViolin(id, outputDirectory, measurements) {
 
     let figurePath = path.join(
         outputDirectory,
-        id,
+        slugify(id),
         "report",
         "violin.svg",
     );
@@ -728,7 +728,7 @@ function listBenchmarks(directory) {
 
 function generateGroupReport(group, outputDirectory) {
     let groupId = group.groupReport.name;
-    let reportDir = path.join(outputDirectory, groupId, 'report');
+    let reportDir = path.join(outputDirectory, slugify(groupId), 'report');
     fs.mkdirSync(reportDir, {recursive: true})
 
     plotViolin(groupId, outputDirectory, group)
