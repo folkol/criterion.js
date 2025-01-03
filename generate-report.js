@@ -181,7 +181,7 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
         script += `${scaledHist} 0\n`;
         script += "e\n";
 
-        gnuplot(script);
+        GnuPlotter.doPlot(script);
     }
 
     static pdfSmall(id, outputDirectory, measurements) {
@@ -227,7 +227,7 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
         script += `${mean} 0\n`;
         script += "e\n";
 
-        gnuplot(script);
+        GnuPlotter.doPlot(script);
     }
 
 
@@ -296,7 +296,7 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
         script += `${max_iters * x_scale} ${lb2} ${ub2}\n`;
         script += "e\n";
 
-        gnuplot(script);
+        GnuPlotter.doPlot(script);
     }
 
 
@@ -366,7 +366,7 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
         script += `${max_iters * x_scale} ${lb2} ${ub2}\n`;
         script += "e\n";
 
-        gnuplot(script);
+        GnuPlotter.doPlot(script);
     }
 
     function
@@ -448,60 +448,54 @@ plot '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Bootstrap distri
         script += `${point} ${y_point}\n`
         script += "e\n";
 
-        gnuplot(script);
+        GnuPlotter.doPlot(script);
     }
 
-    static mean(id, outputDirectory, measurements) {
+    static violin(id, outputDirectory, measurements) {
+        let allCurves = Object.values(measurements.measurements).map(x => new Sample(x.avgTimes.sample.numbers));
 
-    }
-}
+        let kdes = allCurves.map(avgTimes => {
+            let [xs, ys] = sweepAndEstimate(avgTimes, null, avgTimes[0]);
+            let yMax = ys.reduce((acc, y) => Math.max(acc, y));
+            let ysNormalized = ys.map(y => y / yMax);
+            return [xs, ysNormalized];
+        });
 
-
-function plotViolin(id, outputDirectory, measurements) {
-    let allCurves = Object.values(measurements.measurements).map(x => new Sample(x.avgTimes.sample.numbers));
-
-    let kdes = allCurves.map(avgTimes => {
-        let [xs, ys] = sweepAndEstimate(avgTimes, null, avgTimes[0]);
-        let yMax = ys.reduce((acc, y) => Math.max(acc, y));
-        let ysNormalized = ys.map(y => y / yMax);
-        return [xs, ysNormalized];
-    });
-
-    let xs = kdes.flatMap(([xs, _]) => xs).filter(x => x > 0.)
-    let [min, max] = [xs[0], xs[0]];
-    for (let e of xs) {
-        if (e < min) {
-            min = e;
-        } else if (e > max) {
-            max = e;
+        let xs = kdes.flatMap(([xs, _]) => xs).filter(x => x > 0.)
+        let [min, max] = [xs[0], xs[0]];
+        for (let e of xs) {
+            if (e < min) {
+                min = e;
+            } else if (e > max) {
+                max = e;
+            }
         }
-    }
 
-    let scale = [1.0];
-    let unit = scaleValues((min + max) / 2, scale);
+        let scale = [1.0];
+        let unit = scaleValues((min + max) / 2, scale);
 
-    let figurePath = path.join(
-        outputDirectory,
-        slugify(id),
-        "report",
-        "violin.svg",
-    );
+        let figurePath = path.join(
+            outputDirectory,
+            slugify(id),
+            "report",
+            "violin.svg",
+        );
 
-    let plotCommands = []
-    for (let i = 0; i < kdes.length; i++) {
-        let plotCommand = "'-' using 1:2:3 with filledcurves fillstyle noborder lc rgb '#1f78b4' ";
-        plotCommand += i === 0 ? "title 'PDF'" : "notitle";
-        plotCommands.push(plotCommand);
-    }
-    let plotCommand = 'plot ' + plotCommands.join(', ')
+        let plotCommands = []
+        for (let i = 0; i < kdes.length; i++) {
+            let plotCommand = "'-' using 1:2:3 with filledcurves fillstyle noborder lc rgb '#1f78b4' ";
+            plotCommand += i === 0 ? "title 'PDF'" : "notitle";
+            plotCommands.push(plotCommand);
+        }
+        let plotCommand = 'plot ' + plotCommands.join(', ')
 
-    let funcs = Object.keys(measurements.measurements);
-    let yTics = [];
-    for (let i = 0; i < funcs.length; i++) {
-        yTics.push(`'${funcs[i]}' ${i + 0.5}`);
-    }
+        let funcs = Object.keys(measurements.measurements);
+        let yTics = [];
+        for (let i = 0; i < funcs.length; i++) {
+            yTics.push(`'${funcs[i]}' ${i + 0.5}`);
+        }
 
-    let script = `set output '${figurePath}'
+        let script = `set output '${figurePath}'
 set title 'Fibonacci: Violin plot'
 set xtics nomirror
 set xlabel 'Average time (${unit})'
@@ -514,48 +508,50 @@ set terminal svg dynamic dashed size 1280, ${200 + 25 * funcs.length} font 'Helv
 unset bars
 ${plotCommand}\n`;
 
-    for (let i = 0; i < kdes.length; i++) {
-        let i2 = i + 0.5;
-        let [xs, ys] = kdes[i];
-        let ys1 = ys.map(y => i2 + y * .45);
-        let ys2 = ys.map(y => i2 - y * .45);
-        let xScaled = xs.map(x => x * scale[0]);
-        for (let [x, y1, y2] of xScaled.map((x, i) => [x, ys1[i], ys2[i]])) {
-            script += `${x} ${y1} ${y2}\n`;
+        for (let i = 0; i < kdes.length; i++) {
+            let i2 = i + 0.5;
+            let [xs, ys] = kdes[i];
+            let ys1 = ys.map(y => i2 + y * .45);
+            let ys2 = ys.map(y => i2 - y * .45);
+            let xScaled = xs.map(x => x * scale[0]);
+            for (let [x, y1, y2] of xScaled.map((x, i) => [x, ys1[i], ys2[i]])) {
+                script += `${x} ${y1} ${y2}\n`;
+            }
+            script += 'e\n';
         }
-        script += 'e\n';
+
+        GnuPlotter.doPlot(script);
     }
 
-    gnuplot(script);
-}
-
-function gnuplot(script) {
-    let result = child_process.spawnSync("gnuplot", [], {input: script});
-    if (result.error) {
-        console.error("Could not run `gnuplot`. Is it installed?", result.error);
-        process.exit(1);
-    } else if (result.status !== 0) {
-        console.error("Failed to render plots");
-        if (process.env.CRITERION_DEBUG) {
-            console.log('======================')
-            console.log('[DEBUG] Gnuplot script')
-            console.log('======================')
-            console.log(script)
-            console.log('======================')
-            console.log("[DEBUG] Gnuplot stdout");
-            console.log('======================')
-            console.log(result.stdout.toString());
-            console.error('======================')
-            console.error("[DEBUG] Gnuplot stderr");
-            console.error('======================')
-            console.error(result.stderr.toString());
-            console.error('======================')
+    static doPlot(script) {
+        let result = child_process.spawnSync("gnuplot", [], {input: script});
+        if (result.error) {
+            console.error("Could not run `gnuplot`. Is it installed?", result.error);
+            process.exit(1);
+        } else if (result.status !== 0) {
+            console.error("Failed to render plots");
+            if (process.env.CRITERION_DEBUG) {
+                console.log('======================')
+                console.log('[DEBUG] Gnuplot script')
+                console.log('======================')
+                console.log(script)
+                console.log('======================')
+                console.log("[DEBUG] Gnuplot stdout");
+                console.log('======================')
+                console.log(result.stdout.toString());
+                console.error('======================')
+                console.error("[DEBUG] Gnuplot stderr");
+                console.error('======================')
+                console.error(result.stderr.toString());
+                console.error('======================')
+            }
+            console.error("Gnuplot exit code:", result.status);
+            process.exit(1)
         }
-        console.error("Gnuplot exit code:", result.status);
-        process.exit(1)
     }
-}
 
+
+}
 
 function generatePlotsAndReport(
     measurements,
@@ -663,7 +659,7 @@ function generateGroupReport(group, outputDirectory) {
     let reportDir = path.join(outputDirectory, slugify(groupId), 'report');
     fs.mkdirSync(reportDir, {recursive: true})
 
-    plotViolin(groupId, outputDirectory, group)
+    GnuPlotter.violin(groupId, outputDirectory, group)
 
     let context = {
         group_id: group.groupReport.name,
