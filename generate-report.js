@@ -632,7 +632,6 @@ function generatePlotsAndReport(
         // new Plot("Typical", "typical.svg"),
     ];
     if (measurements.absoluteEstimates.slope) {
-        console.log('absoluteEstimates.slope!')
         plotAdditional(id, outputDirectory, 'Slope', 'slope.svg', measurements.distributions.slope, measurements.absoluteEstimates.slope);
         additional_plots.push({url: 'slope.svg', name: 'Slope'})
         // additional_plots.push(new Plot("Slope", "slope.svg"));
@@ -719,7 +718,6 @@ function generateGroupReport(group, outputDirectory) {
 }
 
 async function main() {
-    console.log(process.cwd())
     if (process.argv.length !== 3 || !fs.existsSync(process.argv[2])) {
         console.error("usage: npx criterion-report path_to_criterion_folder");
         process.exit(1);
