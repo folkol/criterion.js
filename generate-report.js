@@ -55,27 +55,156 @@ function sweepAndEstimate(sample, range, point_to_estimate) {
     return [xs, ys, point_estimate];
 }
 
-function plotPdfSmall(id, outputDirectory, measurements) {
-    let avg_times = measurements.avgTimes;
-    let scaled_numbers = [...avg_times.sample.numbers];
-    let typical = scaled_numbers.reduce((acc, x) => Math.max(acc ,x));
-    let unit = scaleValues(typical, scaled_numbers);
-    let scaled_avg_times = new Sample(scaled_numbers);
-    let mean = scaled_avg_times.mean();
-    let [xs, ys, mean_y] = sweepAndEstimate(scaled_avg_times, null, mean);
 
-    let reportDir = path.join(outputDirectory, id.directoryName, "report");
-    fs.mkdirSync(reportDir, {recursive: true});
-    let figurePath = path.join(
-        reportDir,
-        "pdf_small.svg",
-    );
+function confidenceInterval(percentiles, confidenceLevel) {
+    if (confidenceLevel <= 0 || confidenceLevel >= 1) {
+        throw "unexpected confidence level";
+    }
 
-    let min_x = xs.reduce((acc, x) => Math.min(acc, x));
-    let max_x = xs.reduce((acc, x) => Math.max(acc, x));
-    let max_y = ys.reduce((acc, x) => Math.max(acc, x)) * 1.1;
+    return [
+        percentiles.at(50 * (1 - confidenceLevel)),
+        percentiles.at(50 * (1 + confidenceLevel)),
+    ];
+}
 
-    let script = `set output '${figurePath}'
+class GnuPlotter {
+
+    static pdf(id, outputDirectory, measurements) {
+        let iterCounts = measurements.data.xs;
+        let maxIters = iterCounts.reduce((acc, x) => Math.max(acc, x));
+        let exponent = 3 * Math.floor(Math.log10(maxIters) / 3);
+
+        let avg_times = measurements.avgTimes;
+        let scaled_numbers = [...avg_times.sample.numbers];
+        let typical = scaled_numbers.reduce((acc, x) => Math.max(acc, x));
+        let unit = scaleValues(typical, scaled_numbers);
+        let scaled_avg_times = new Sample(scaled_numbers);
+        let mean = scaled_avg_times.mean();
+        let [xs, ys] = sweepAndEstimate(scaled_avg_times, null, mean);
+
+        let reportDir = path.join(outputDirectory, id.directoryName, "report");
+        fs.mkdirSync(reportDir, {recursive: true});
+        let figurePath = path.join(
+            reportDir,
+            "pdf.svg",
+        );
+
+        let min_x = xs.reduce((acc, x) => Math.min(acc, x));
+        let max_x = xs.reduce((acc, x) => Math.max(acc, x));
+        let max_y = ys.reduce((acc, y) => Math.max(acc, y)) * 1.1;
+
+        let script = `set output '${figurePath}'
+set title '${id.title}'
+set xtics nomirror
+set xlabel 'Average time (${unit})'
+set xrange [${min_x}:${max_x}]
+show xrange
+set ytics nomirror
+set ylabel 'Iterations (x 10^${exponent})'
+set yrange [0:${max_y}]
+set y2tics nomirror
+set key on outside top right Left reverse
+set terminal svg dynamic dashed size 1280, 720 font 'Helvetica'
+unset bars
+plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder lc rgb '#1f78b4' title 'PDF', \
+     '-' using 1:2 with lines lt 2 lw 2 lc rgb '#1f78b4' title 'Mean', \
+     '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.75 title '"Clean" sample', \
+     '-' using 1:2 with points lt 1 lc rgb '#ff7f00' pt 7 ps 0.75 title 'Mild Outliers', \
+     '-' using 1:2 with points lt 1 lc rgb '#e31a1c' pt 7 ps 0.75 title 'Severe Outliers', \
+     '-' using 1:2 with lines lt 2 lw 2 lc rgb '#ff7f00' notitle, \
+     '-' using 1:2 with lines lt 2 lw 2 lc rgb '#ff7f00' notitle, \
+     '-' using 1:2 with lines lt 2 lw 2 lc rgb '#e31a1c' notitle, \
+     '-' using 1:2 with lines lt 2 lw 2 lc rgb '#e31a1c' notitle
+`;
+
+        for (let [x, y] of xs.map((x, i) => [x, ys[i]])) {
+            script += `${x} ${y} 0\n`;
+        }
+        script += "e\n";
+
+        script += `${mean} ${max_y}\n`;
+        script += `${mean} 0\n`;
+        script += "e\n";
+
+        let clean = [];
+        let mildOutliers = [];
+        let severeOutliers = [];
+
+        let [lost, lomt, himt, hist] = measurements.avgTimes.fences;
+        for (let [n, x, y] of avg_times.sample.numbers.map((x, i) => [
+            x,
+            scaled_avg_times.numbers[i],
+            ys[i]
+        ])) {
+            if (n < lost) {
+                severeOutliers.push([x, y]);
+            } else if (n > hist) {
+                severeOutliers.push([x, y]);
+            } else if (n < lomt) {
+                mildOutliers.push([x, y]);
+            } else if (n > himt) {
+                mildOutliers.push([x, y]);
+            } else {
+                clean.push([x, y]);
+            }
+        }
+        for (let [x, y] of clean) {
+            script += `${x} ${y}\n`
+        }
+        script += "e\n";
+        for (let [x, y] of mildOutliers) {
+            script += `${x} ${y}\n`
+        }
+        script += "e\n";
+        for (let [x, y] of severeOutliers) {
+            script += `${x} ${y}\n`
+        }
+        script += "e\n";
+
+        let scaledFences = [...measurements.avgTimes.fences];
+        scaleValues(typical, scaledFences)
+        let [scaledLost, scaledLomt, scaledHimt, scaledHist] = scaledFences
+
+        // inner fences
+        script += `${scaledLomt} ${max_y}\n`;
+        script += `${scaledLomt} 0\n`;
+        script += "e\n";
+        script += `${scaledHimt} ${max_y}\n`;
+        script += `${scaledHimt} 0\n`;
+        script += "e\n";
+
+        // outer fences
+        script += `${scaledLost} ${max_y}\n`;
+        script += `${scaledLost} 0\n`;
+        script += "e\n";
+        script += `${scaledHist} ${max_y}\n`;
+        script += `${scaledHist} 0\n`;
+        script += "e\n";
+
+        gnuplot(script);
+    }
+
+    static pdfSmall(id, outputDirectory, measurements) {
+        let avg_times = measurements.avgTimes;
+        let scaled_numbers = [...avg_times.sample.numbers];
+        let typical = scaled_numbers.reduce((acc, x) => Math.max(acc, x));
+        let unit = scaleValues(typical, scaled_numbers);
+        let scaled_avg_times = new Sample(scaled_numbers);
+        let mean = scaled_avg_times.mean();
+        let [xs, ys, mean_y] = sweepAndEstimate(scaled_avg_times, null, mean);
+
+        let reportDir = path.join(outputDirectory, id.directoryName, "report");
+        fs.mkdirSync(reportDir, {recursive: true});
+        let figurePath = path.join(
+            reportDir,
+            "pdf_small.svg",
+        );
+
+        let min_x = xs.reduce((acc, x) => Math.min(acc, x));
+        let max_x = xs.reduce((acc, x) => Math.max(acc, x));
+        let max_y = ys.reduce((acc, x) => Math.max(acc, x)) * 1.1;
+
+        let script = `set output '${figurePath}'
 set xtics nomirror
 set xlabel 'Average time (${unit})'
 set xrange [${min_x}:${max_x}]
@@ -90,143 +219,122 @@ unset bars
 plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder lc rgb '#1f78b4' title 'PDF', '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Mean'
 `;
 
-    for (let [x, y] of xs.map((x, i) => [x, ys[i]])) {
-        script += `${x} ${y} 0\n`;
-    }
-    script += "e\n";
-    script += `${mean} ${mean_y}\n`;
-    script += `${mean} 0\n`;
-    script += "e\n";
-
-    gnuplot(script);
-}
-
-function plotAdditional(id, outputDirectory, statistic, filename, distribution, estimate) {
-    let ci = estimate.confidenceInterval;
-    let typical = ci.upperBound;
-    let ci_values = [ci.lowerBound, ci.upperBound, estimate.pointEstimate];
-
-    let unit = scaleValues(typical, ci_values);
-    let [lb, ub, point] = [ci_values[0], ci_values[1], ci_values[2]];
-
-    let start = lb - (ub - lb) / 9.;
-    let end = ub + (ub - lb) / 9.;
-    let scaled_xs = [...distribution.numbers];
-    scaleValues(typical, scaled_xs);
-    let scaled_xs_sample = new Sample(scaled_xs);
-
-    let [kde_xs, ys] = sweepAndEstimate(scaled_xs_sample, [start, end]);
-
-    // interpolate between two points of the KDE sweep to find the Y position at the point estimate.
-    let n_point = kde_xs.length - 1;
-    for (let i = 0; i < kde_xs.length; i++) {
-        if (kde_xs[i] >= point) {
-            n_point = Math.max(i, 1);
-            break
+        for (let [x, y] of xs.map((x, i) => [x, ys[i]])) {
+            script += `${x} ${y} 0\n`;
         }
+        script += "e\n";
+        script += `${mean} ${mean_y}\n`;
+        script += `${mean} 0\n`;
+        script += "e\n";
+
+        gnuplot(script);
     }
 
-    let slope = (ys[n_point] - ys[n_point - 1]) / (kde_xs[n_point] - kde_xs[n_point - 1]);
-    let y_point = ys[n_point - 1] + (slope * (point - kde_xs[n_point - 1]));
 
-    let start2 = kde_xs.findIndex(x => x >= lb);
-    let end2 = kde_xs.findLastIndex(x => x <= ub);
+    static regressionSmall(id, outputDirectory, measurements) {
+        let slopeEstimate = measurements.absoluteEstimates.slope;
+        let slopeDist = measurements.distributions.slope;
+        let [lb, ub] = confidenceInterval(
+            new Sample(slopeDist.numbers).percentiles(),
+            slopeEstimate.confidenceInterval.confidenceLevel,
+        );
+        let data = measurements.data;
+        let [max_iters, typical] = [
+            data.xs.reduce((acc, x) => Math.max(acc, x)),
+            data.ys.reduce((acc, y) => Math.max(acc, y))
+        ];
+        let scaled_numbers = [...data.ys];
+        let unit = scaleValues(typical, scaled_numbers);
+        let point_estimate = Slope.fit(measurements.data);
+        let scaled_points = [
+            point_estimate * max_iters,
+            lb * max_iters,
+            ub * max_iters,
+        ];
+        scaleValues(typical, scaled_points);
+        let [point, lb2, ub2] = scaled_points;
+        let exponent = 3 * Math.floor(Math.log10(max_iters) / 3);
+        let x_scale = 10 ** -exponent;
+        let x_label =
+            exponent === 0 ? "Iterations" : `Iterations (x 10^${exponent})`;
 
-    let len = end2 - start2;
+        let figurePath = path.join(
+            outputDirectory,
+            id.directoryName,
+            "report",
+            "regression_small.svg",
+        );
 
-    let kde_xs_sample = new Sample(kde_xs);
-
-    let title = `${id.title}: ${statistic}`;
-    let [xMin, xMax] = [
-        kde_xs_sample.numbers.reduce((acc, x) => Math.min(acc, x)),
-        kde_xs_sample.numbers.reduce((acc, x) => Math.max(acc, x))
-    ];
-
-    let reportDir = path.join(outputDirectory, id.directoryName, "report");
-    fs.mkdirSync(reportDir, {recursive: true});
-    let figurePath = path.join(
-        reportDir,
-        filename,
-    );
-
-    let script = `set output '${figurePath}'
-set title '${title}'
-set xtics nomirror
-set xlabel 'Average time (${unit})'
-set xrange [${xMin}:${xMax}]
-set ytics nomirror
-set ylabel 'Density (a.u.)'
-set key on outside top right Left reverse
-set terminal svg dynamic dashed size 1280, 720 font 'Helvetica'
+        let script = `set output '${figurePath}'
+set xtics nomirror 
+set xlabel '${x_label}'
+set grid xtics
+set ytics nomirror 
+set ylabel 'Total sample time (${unit})'
+set grid ytics
+set key off
+set terminal svg dynamic dashed size 450, 300 font 'Helvetica'
 unset bars
-plot '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Bootstrap distribution', \
-     '-' using 1:2:3 with filledcurves fillstyle solid 0.25 noborder lc rgb '#1f78b4' title 'Confidence interval', \
-     '-' using 1:2 with lines lt 2 lw 2 lc rgb '#1f78b4' title 'Point estimate'
-    `;
+plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample', \
+     '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Linear regression', \
+     '-' using 1:2:3 with filledcurves fillstyle solid 0.25 noborder lc rgb '#1f78b4' title 'Confidence interval'    
+`;
 
-    for (let [x, y] of kde_xs.map((x, i) => [x, ys[i]])) {
-        script += `${x} ${y}\n`;
-    }
-    script += "e\n";
+        for (let [x, y] of data.xs.map((x, i) => [
+            x * x_scale,
+            scaled_numbers[i],
+        ])) {
+            script += `${x} ${y} 0\n`;
+        }
+        script += "e\n";
 
-    for (let [x, y] of kde_xs.slice(start2, start2 + len).map((x, i) => [x, ys.slice(start2)[i]])) {
-        script += `${x} ${y} 0\n`;
-    }
-    script += "e\n";
+        script += `0 0\n`;
+        script += `${max_iters * x_scale} ${point}\n`;
+        script += "e\n";
 
-    script += `${point} 0\n`
-    script += `${point} ${y_point}\n`
-    script += "e\n";
+        script += `0 0 0\n`;
+        script += `${max_iters * x_scale} ${lb2} ${ub2}\n`;
+        script += "e\n";
 
-    gnuplot(script);
-}
-
-function confidenceInterval(percentiles, confidenceLevel) {
-    if (confidenceLevel <= 0 || confidenceLevel >= 1) {
-        throw "unexpected confidence level";
+        gnuplot(script);
     }
 
-    return [
-        percentiles.at(50 * (1 - confidenceLevel)),
-        percentiles.at(50 * (1 + confidenceLevel)),
-    ];
-}
 
-function plotRegression(id, outputDirectory, measurements) {
-    let slopeEstimate = measurements.absoluteEstimates.slope;
-    let slopeDist = measurements.distributions.slope;
-    let [lb, ub] = confidenceInterval(
-        new Sample(slopeDist.numbers).percentiles(),
-        slopeEstimate.confidenceInterval.confidenceLevel,
-    );
-    let data = measurements.data;
-    let [max_iters, typical] = [
-        data.xs.reduce((acc, x) => Math.max(acc, x)),
-        data.ys.reduce((acc, y) => Math.max(acc, y))
-    ];
-    let scaled_numbers = [...data.ys];
-    let unit = scaleValues(typical, scaled_numbers);
-    let point_estimate = Slope.fit(measurements.data);
-    let scaled_points = [
-        point_estimate * max_iters,
-        lb * max_iters,
-        ub * max_iters,
-    ];
-    scaleValues(typical, scaled_points);
-    let [point, lb2, ub2] = scaled_points;
-    let exponent = 3 * Math.floor(Math.log10(max_iters) / 3);
-    let x_scale = 10 ** -exponent;
-    let x_label =
-        exponent === 0 ? "Iterations" : `Iterations (x 10^${exponent})`;
+    static regression(id, outputDirectory, measurements) {
+        let slopeEstimate = measurements.absoluteEstimates.slope;
+        let slopeDist = measurements.distributions.slope;
+        let [lb, ub] = confidenceInterval(
+            new Sample(slopeDist.numbers).percentiles(),
+            slopeEstimate.confidenceInterval.confidenceLevel,
+        );
+        let data = measurements.data;
+        let [max_iters, typical] = [
+            data.xs.reduce((acc, x) => Math.max(acc, x)),
+            data.ys.reduce((acc, y) => Math.max(acc, y))
+        ];
+        let scaled_numbers = [...data.ys];
+        let unit = scaleValues(typical, scaled_numbers);
+        let point_estimate = Slope.fit(measurements.data);
+        let scaled_points = [
+            point_estimate * max_iters,
+            lb * max_iters,
+            ub * max_iters,
+        ];
+        scaleValues(typical, scaled_points);
+        let [point, lb2, ub2] = scaled_points;
+        let exponent = 3 * Math.floor(Math.log10(max_iters) / 3);
+        let x_scale = 10 ** -exponent;
+        let x_label =
+            exponent === 0 ? "Iterations" : `Iterations (x 10^${exponent})`;
 
-    let figurePath = path.join(
-        outputDirectory,
-        id.directoryName,
-        "report",
-        "regression.svg",
-    );
+        let figurePath = path.join(
+            outputDirectory,
+            id.directoryName,
+            "report",
+            "regression.svg",
+        );
 
-    let script = `set output '${figurePath}'
+        let script = `set output '${figurePath}'
 set title '${id.title}'
 set xtics nomirror 
 set xlabel '${x_label}'
@@ -242,92 +350,112 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
      '-' using 1:2:3 with filledcurves fillstyle solid 0.25 noborder lc rgb '#1f78b4' title 'Confidence interval'    
 `;
 
-    for (let [x, y] of data.xs.map((x, i) => [
-        x * x_scale,
-        scaled_numbers[i],
-    ])) {
-        script += `${x} ${y} 0\n`;
+        for (let [x, y] of data.xs.map((x, i) => [
+            x * x_scale,
+            scaled_numbers[i],
+        ])) {
+            script += `${x} ${y} 0\n`;
+        }
+        script += "e\n";
+
+        script += `0 0\n`;
+        script += `${max_iters * x_scale} ${point}\n`;
+        script += "e\n";
+
+        script += `0 0 0\n`;
+        script += `${max_iters * x_scale} ${lb2} ${ub2}\n`;
+        script += "e\n";
+
+        gnuplot(script);
     }
-    script += "e\n";
 
-    script += `0 0\n`;
-    script += `${max_iters * x_scale} ${point}\n`;
-    script += "e\n";
+    function
 
-    script += `0 0 0\n`;
-    script += `${max_iters * x_scale} ${lb2} ${ub2}\n`;
-    script += "e\n";
+    static statistic(id, outputDirectory, statistic, filename, distribution, estimate) {
+        let ci = estimate.confidenceInterval;
+        let typical = ci.upperBound;
+        let ci_values = [ci.lowerBound, ci.upperBound, estimate.pointEstimate];
 
-    gnuplot(script);
-}
+        let unit = scaleValues(typical, ci_values);
+        let [lb, ub, point] = [ci_values[0], ci_values[1], ci_values[2]];
 
-function plotRegressionSmall(id, outputDirectory, measurements) {
-    let slopeEstimate = measurements.absoluteEstimates.slope;
-    let slopeDist = measurements.distributions.slope;
-    let [lb, ub] = confidenceInterval(
-        new Sample(slopeDist.numbers).percentiles(),
-        slopeEstimate.confidenceInterval.confidenceLevel,
-    );
-    let data = measurements.data;
-    let [max_iters, typical] = [
-        data.xs.reduce((acc, x) => Math.max(acc, x)),
-        data.ys.reduce((acc, y) => Math.max(acc, y))
-    ];
-    let scaled_numbers = [...data.ys];
-    let unit = scaleValues(typical, scaled_numbers);
-    let point_estimate = Slope.fit(measurements.data);
-    let scaled_points = [
-        point_estimate * max_iters,
-        lb * max_iters,
-        ub * max_iters,
-    ];
-    scaleValues(typical, scaled_points);
-    let [point, lb2, ub2] = scaled_points;
-    let exponent = 3 * Math.floor(Math.log10(max_iters) / 3);
-    let x_scale = 10 ** -exponent;
-    let x_label =
-        exponent === 0 ? "Iterations" : `Iterations (x 10^${exponent})`;
+        let start = lb - (ub - lb) / 9.;
+        let end = ub + (ub - lb) / 9.;
+        let scaled_xs = [...distribution.numbers];
+        scaleValues(typical, scaled_xs);
+        let scaled_xs_sample = new Sample(scaled_xs);
 
-    let figurePath = path.join(
-        outputDirectory,
-        id.directoryName,
-        "report",
-        "regression_small.svg",
-    );
+        let [kde_xs, ys] = sweepAndEstimate(scaled_xs_sample, [start, end]);
 
-    let script = `set output '${figurePath}'
-set xtics nomirror 
-set xlabel '${x_label}'
-set grid xtics
-set ytics nomirror 
-set ylabel 'Total sample time (${unit})'
-set grid ytics
-set key off
-set terminal svg dynamic dashed size 450, 300 font 'Helvetica'
+        // interpolate between two points of the KDE sweep to find the Y position at the point estimate.
+        let n_point = kde_xs.length - 1;
+        for (let i = 0; i < kde_xs.length; i++) {
+            if (kde_xs[i] >= point) {
+                n_point = Math.max(i, 1);
+                break
+            }
+        }
+
+        let slope = (ys[n_point] - ys[n_point - 1]) / (kde_xs[n_point] - kde_xs[n_point - 1]);
+        let y_point = ys[n_point - 1] + (slope * (point - kde_xs[n_point - 1]));
+
+        let start2 = kde_xs.findIndex(x => x >= lb);
+        let end2 = kde_xs.findLastIndex(x => x <= ub);
+
+        let len = end2 - start2;
+
+        let kde_xs_sample = new Sample(kde_xs);
+
+        let title = `${id.title}: ${statistic}`;
+        let [xMin, xMax] = [
+            kde_xs_sample.numbers.reduce((acc, x) => Math.min(acc, x)),
+            kde_xs_sample.numbers.reduce((acc, x) => Math.max(acc, x))
+        ];
+
+        let reportDir = path.join(outputDirectory, id.directoryName, "report");
+        fs.mkdirSync(reportDir, {recursive: true});
+        let figurePath = path.join(
+            reportDir,
+            filename,
+        );
+
+        let script = `set output '${figurePath}'
+set title '${title}'
+set xtics nomirror
+set xlabel 'Average time (${unit})'
+set xrange [${xMin}:${xMax}]
+set ytics nomirror
+set ylabel 'Density (a.u.)'
+set key on outside top right Left reverse
+set terminal svg dynamic dashed size 1280, 720 font 'Helvetica'
 unset bars
-plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample', \
-     '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Linear regression', \
-     '-' using 1:2:3 with filledcurves fillstyle solid 0.25 noborder lc rgb '#1f78b4' title 'Confidence interval'    
-`;
+plot '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Bootstrap distribution', \
+     '-' using 1:2:3 with filledcurves fillstyle solid 0.25 noborder lc rgb '#1f78b4' title 'Confidence interval', \
+     '-' using 1:2 with lines lt 2 lw 2 lc rgb '#1f78b4' title 'Point estimate'
+    `;
 
-    for (let [x, y] of data.xs.map((x, i) => [
-        x * x_scale,
-        scaled_numbers[i],
-    ])) {
-        script += `${x} ${y} 0\n`;
+        for (let [x, y] of kde_xs.map((x, i) => [x, ys[i]])) {
+            script += `${x} ${y}\n`;
+        }
+        script += "e\n";
+
+        for (let [x, y] of kde_xs.slice(start2, start2 + len).map((x, i) => [x, ys.slice(start2)[i]])) {
+            script += `${x} ${y} 0\n`;
+        }
+        script += "e\n";
+
+        script += `${point} 0\n`
+        script += `${point} ${y_point}\n`
+        script += "e\n";
+
+        gnuplot(script);
     }
-    script += "e\n";
 
-    script += `0 0\n`;
-    script += `${max_iters * x_scale} ${point}\n`;
-    script += "e\n";
+    static mean(id, outputDirectory, measurements) {
 
-    script += `0 0 0\n`;
-    script += `${max_iters * x_scale} ${lb2} ${ub2}\n`;
-    script += "e\n";
-
-    gnuplot(script);
+    }
 }
+
 
 function plotViolin(id, outputDirectory, measurements) {
     let allCurves = Object.values(measurements.measurements).map(x => new Sample(x.avgTimes.sample.numbers));
@@ -428,120 +556,6 @@ function gnuplot(script) {
     }
 }
 
-function plotPdf(id, outputDirectory, measurements) {
-    let iterCounts = measurements.data.xs;
-    let maxIters = iterCounts.reduce((acc, x) => Math.max(acc, x));
-    let exponent = 3 * Math.floor(Math.log10(maxIters) / 3);
-
-    let avg_times = measurements.avgTimes;
-    let scaled_numbers = [...avg_times.sample.numbers];
-    let typical = scaled_numbers.reduce((acc, x) => Math.max(acc, x));
-    let unit = scaleValues(typical, scaled_numbers);
-    let scaled_avg_times = new Sample(scaled_numbers);
-    let mean = scaled_avg_times.mean();
-    let [xs, ys] = sweepAndEstimate(scaled_avg_times, null, mean);
-
-    let reportDir = path.join(outputDirectory, id.directoryName, "report");
-    fs.mkdirSync(reportDir, {recursive: true});
-    let figurePath = path.join(
-        reportDir,
-        "pdf.svg",
-    );
-
-    let min_x = xs.reduce((acc, x) => Math.min(acc, x));
-    let max_x = xs.reduce((acc, x) => Math.max(acc, x));
-    let max_y = ys.reduce((acc, y) => Math.max(acc, y)) * 1.1;
-
-    let script = `set output '${figurePath}'
-set title '${id.title}'
-set xtics nomirror
-set xlabel 'Average time (${unit})'
-set xrange [${min_x}:${max_x}]
-show xrange
-set ytics nomirror
-set ylabel 'Iterations (x 10^${exponent})'
-set yrange [0:${max_y}]
-set y2tics nomirror
-set key on outside top right Left reverse
-set terminal svg dynamic dashed size 1280, 720 font 'Helvetica'
-unset bars
-plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder lc rgb '#1f78b4' title 'PDF', \
-     '-' using 1:2 with lines lt 2 lw 2 lc rgb '#1f78b4' title 'Mean', \
-     '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.75 title '"Clean" sample', \
-     '-' using 1:2 with points lt 1 lc rgb '#ff7f00' pt 7 ps 0.75 title 'Mild Outliers', \
-     '-' using 1:2 with points lt 1 lc rgb '#e31a1c' pt 7 ps 0.75 title 'Severe Outliers', \
-     '-' using 1:2 with lines lt 2 lw 2 lc rgb '#ff7f00' notitle, \
-     '-' using 1:2 with lines lt 2 lw 2 lc rgb '#ff7f00' notitle, \
-     '-' using 1:2 with lines lt 2 lw 2 lc rgb '#e31a1c' notitle, \
-     '-' using 1:2 with lines lt 2 lw 2 lc rgb '#e31a1c' notitle
-`;
-
-    for (let [x, y] of xs.map((x, i) => [x, ys[i]])) {
-        script += `${x} ${y} 0\n`;
-    }
-    script += "e\n";
-
-    script += `${mean} ${max_y}\n`;
-    script += `${mean} 0\n`;
-    script += "e\n";
-
-    let clean = [];
-    let mildOutliers = [];
-    let severeOutliers = [];
-
-    let [lost, lomt, himt, hist] = measurements.avgTimes.fences;
-    for (let [n, x, y] of avg_times.sample.numbers.map((x, i) => [
-        x,
-        scaled_avg_times.numbers[i],
-        ys[i]
-    ])) {
-        if (n < lost) {
-            severeOutliers.push([x, y]);
-        } else if (n > hist) {
-            severeOutliers.push([x, y]);
-        } else if (n < lomt) {
-            mildOutliers.push([x, y]);
-        } else if (n > himt) {
-            mildOutliers.push([x, y]);
-        } else {
-            clean.push([x, y]);
-        }
-    }
-    for (let [x, y] of clean) {
-        script += `${x} ${y}\n`
-    }
-    script += "e\n";
-    for (let [x, y] of mildOutliers) {
-        script += `${x} ${y}\n`
-    }
-    script += "e\n";
-    for (let [x, y] of severeOutliers) {
-        script += `${x} ${y}\n`
-    }
-    script += "e\n";
-
-    let scaledFences = [...measurements.avgTimes.fences];
-    scaleValues(typical, scaledFences)
-    let [scaledLost, scaledLomt, scaledHimt, scaledHist] = scaledFences
-
-    // inner fences
-    script += `${scaledLomt} ${max_y}\n`;
-    script += `${scaledLomt} 0\n`;
-    script += "e\n";
-    script += `${scaledHimt} ${max_y}\n`;
-    script += `${scaledHimt} 0\n`;
-    script += "e\n";
-
-    // outer fences
-    script += `${scaledLost} ${max_y}\n`;
-    script += `${scaledLost} 0\n`;
-    script += "e\n";
-    script += `${scaledHist} ${max_y}\n`;
-    script += `${scaledHist} 0\n`;
-    script += "e\n";
-
-    gnuplot(script);
-}
 
 function generatePlotsAndReport(
     measurements,
@@ -549,9 +563,12 @@ function generatePlotsAndReport(
     outputDirectory,
 ) {
     console.log('generating plots and report for', id.title);
+    let estimates = measurements.absoluteEstimates;
+    let distributions = measurements.distributions;
+
     let typical_estimate =
-        measurements.absoluteEstimates.slope ??
-        measurements.absoluteEstimates.mean;
+        estimates.slope ??
+        estimates.mean;
 
     let time_interval = (est) => {
         let {lowerBound, upperBound} = est.confidenceInterval;
@@ -564,29 +581,26 @@ function generatePlotsAndReport(
 
     let data = measurements.data;
 
-    plotPdfSmall(id, outputDirectory, measurements)
-    plotPdf(id, outputDirectory, measurements)
+    GnuPlotter.pdfSmall(id, outputDirectory, measurements)
+    GnuPlotter.pdf(id, outputDirectory, measurements)
 
-    if (measurements.absoluteEstimates.slope) {
-        plotRegressionSmall(id, outputDirectory, measurements)
-        plotRegression(id, outputDirectory, measurements)
-    }
+    GnuPlotter.regressionSmall(id, outputDirectory, measurements)
+    GnuPlotter.regression(id, outputDirectory, measurements)
 
-    plotAdditional(id, outputDirectory, 'Mean', 'mean.svg', measurements.distributions.mean, measurements.absoluteEstimates.mean);
-    plotAdditional(id, outputDirectory, 'Median', 'median.svg', measurements.distributions.median, measurements.absoluteEstimates.median);
-    plotAdditional(id, outputDirectory, 'Std. Dev.', 'stdDev.svg', measurements.distributions.stdDev, measurements.absoluteEstimates.stdDev);
-    plotAdditional(id, outputDirectory, 'MAD', 'mad.svg', measurements.distributions.medianAbsDev, measurements.absoluteEstimates.medianAbsDev);
+    GnuPlotter.statistic(id, outputDirectory, 'Mean', 'mean.svg', distributions.mean, estimates.mean);
+    GnuPlotter.statistic(id, outputDirectory, 'Median', 'median.svg', distributions.median, estimates.median);
+    GnuPlotter.statistic(id, outputDirectory, 'Std. Dev.', 'stdDev.svg', distributions.stdDev, estimates.stdDev);
+    GnuPlotter.statistic(id, outputDirectory, 'MAD', 'mad.svg', distributions.medianAbsDev, estimates.medianAbsDev);
+    GnuPlotter.statistic(id, outputDirectory, 'Slope', 'slope.svg', distributions.slope, estimates.slope);
+
     let additional_plots = [
         {url: 'mean.svg', name: 'Mean'},
         {url: 'median.svg', name: 'Median'},
         {url: 'stdDev.svg', name: 'Std. Dev.'},
-        {url: 'mad.svg', name: 'MAD'}
+        {url: 'mad.svg', name: 'MAD'},
+        {url: 'slope.svg', name: 'Slope'}
         // new Plot("Typical", "typical.svg"),
     ];
-    if (measurements.absoluteEstimates.slope) {
-        plotAdditional(id, outputDirectory, 'Slope', 'slope.svg', measurements.distributions.slope, measurements.absoluteEstimates.slope);
-        additional_plots.push({url: 'slope.svg', name: 'Slope'})
-    }
 
     let context = {
         title: id.title,
@@ -595,13 +609,13 @@ function generatePlotsAndReport(
         thumbnail_width: 450,
         thumbnail_height: 300,
 
-        slope: measurements.absoluteEstimates.slope
-            ? time_interval(measurements.absoluteEstimates.slope)
+        slope: estimates.slope
+            ? time_interval(estimates.slope)
             : null,
-        mean: time_interval(measurements.absoluteEstimates.mean),
-        median: time_interval(measurements.absoluteEstimates.median),
-        mad: time_interval(measurements.absoluteEstimates.medianAbsDev),
-        std_dev: time_interval(measurements.absoluteEstimates.stdDev),
+        mean: time_interval(estimates.mean),
+        median: time_interval(estimates.median),
+        mad: time_interval(estimates.medianAbsDev),
+        std_dev: time_interval(estimates.stdDev),
         r2: {
             lower: Slope.rSquared(
                 typical_estimate.confidenceInterval.lowerBound,
