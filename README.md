@@ -21,7 +21,7 @@ Micro-benchmarking is what it is, if your production code isn't executed in a ti
 
 ### Unstable API
 
-The code change a lot, if you run into 'weird problems' -- try removing any test outputs created by an older version of Criterion.
+The code changes a lot, if you run into 'weird problems' -- try removing any test outputs created by an older version of Criterion.
 
 ## How do I get it?
 
@@ -56,7 +56,7 @@ group.bench("g", g);
 ## How do I run it?
 
 ```
-$ node path/to/my/fibonacci.js
+$ node path/to/my/benchmark.js
 $ npx criterion-report ./criterion/
 ```
 
@@ -65,12 +65,12 @@ $ npx criterion-report ./criterion/
 If you want to compare your functions in different runtime environments, you can set the CRITERION_ENV environment variable -- and you will get synthetic tests with the env name appended:
 
 ```
-$ node path/to/my/fibonacci.js
-$ CRITERION_ENV=bun bun path/to/my/fibonacci.js
+$ node path/to/my/benchmark.js
+$ CRITERION_ENV=bun bun path/to/my/benchmark.js
 $ npx criterion-report ./criterion/
 ```
 
-![CRITERION_ENV example](criterion_env_example.png)
+![CRITERION_ENV example](https://github.com/folkol/criterion.js/raw/master/criterion_env_example.png)
 
 ## TODO
 

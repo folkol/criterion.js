@@ -37,8 +37,8 @@ function silverman(sample) {
 
 function sweepAndEstimate(sample, range, point_to_estimate) {
     let numPoints = 500;
-    let xMin = Math.min(...sample.numbers);
-    let xMax = Math.max(...sample.numbers);
+    let xMin = sample.numbers.reduce((acc, x) => Math.min(acc, x))
+    let xMax = sample.numbers.reduce((acc, x) => Math.max(acc, x))
 
     let kde = new Kde(sample);
     let h = kde.bandwidth;
@@ -58,7 +58,7 @@ function sweepAndEstimate(sample, range, point_to_estimate) {
 function plotPdfSmall(id, outputDirectory, measurements) {
     let avg_times = measurements.avgTimes;
     let scaled_numbers = [...avg_times.sample.numbers];
-    let typical = Math.max(...scaled_numbers);
+    let typical = scaled_numbers.reduce((acc, x) => Math.max(acc ,x));
     let unit = scaleValues(typical, scaled_numbers);
     let scaled_avg_times = new Sample(scaled_numbers);
     let mean = scaled_avg_times.mean();
@@ -71,9 +71,9 @@ function plotPdfSmall(id, outputDirectory, measurements) {
         "pdf_small.svg",
     );
 
-    let min_x = Math.min(...xs);
-    let max_x = Math.max(...xs);
-    let max_y = Math.max(...ys) * 1.1;
+    let min_x = xs.reduce((acc, x) => Math.min(acc, x));
+    let max_x = xs.reduce((acc, x) => Math.max(acc, x));
+    let max_y = ys.reduce((acc, x) => Math.max(acc, x)) * 1.1;
 
     let script = `set output '${figurePath}'
 set xtics nomirror
@@ -137,7 +137,10 @@ function plotAdditional(id, outputDirectory, statistic, filename, distribution, 
     let kde_xs_sample = new Sample(kde_xs);
 
     let title = `${id.title}: ${statistic}`;
-    let [xMin, xMax] = [Math.min(...kde_xs_sample.numbers), Math.max(...kde_xs_sample.numbers)];
+    let [xMin, xMax] = [
+        kde_xs_sample.numbers.reduce((acc, x) => Math.min(acc, x)),
+        kde_xs_sample.numbers.reduce((acc, x) => Math.max(acc, x))
+    ];
 
     let reportDir = path.join(outputDirectory, id.directoryName, "report");
     fs.mkdirSync(reportDir, {recursive: true});
@@ -197,7 +200,10 @@ function plotRegression(id, outputDirectory, measurements) {
         slopeEstimate.confidenceInterval.confidenceLevel,
     );
     let data = measurements.data;
-    let [max_iters, typical] = [Math.max(...data.xs), Math.max(...data.ys)];
+    let [max_iters, typical] = [
+        data.xs.reduce((acc, x) => Math.max(acc, x)),
+        data.ys.reduce((acc, y) => Math.max(acc, y))
+    ];
     let scaled_numbers = [...data.ys];
     let unit = scaleValues(typical, scaled_numbers);
     let point_estimate = Slope.fit(measurements.data);
@@ -263,7 +269,10 @@ function plotRegressionSmall(id, outputDirectory, measurements) {
         slopeEstimate.confidenceInterval.confidenceLevel,
     );
     let data = measurements.data;
-    let [max_iters, typical] = [Math.max(...data.xs), Math.max(...data.ys)];
+    let [max_iters, typical] = [
+        data.xs.reduce((acc, x) => Math.max(acc, x)),
+        data.ys.reduce((acc, y) => Math.max(acc, y))
+    ];
     let scaled_numbers = [...data.ys];
     let unit = scaleValues(typical, scaled_numbers);
     let point_estimate = Slope.fit(measurements.data);
@@ -325,7 +334,7 @@ function plotViolin(id, outputDirectory, measurements) {
 
     let kdes = allCurves.map(avgTimes => {
         let [xs, ys] = sweepAndEstimate(avgTimes, null, avgTimes[0]);
-        let yMax = Math.max(...ys);
+        let yMax = ys.reduce((acc, y) => Math.max(acc, y));
         let ysNormalized = ys.map(y => y / yMax);
         return [xs, ysNormalized];
     });
@@ -421,12 +430,12 @@ function gnuplot(script) {
 
 function plotPdf(id, outputDirectory, measurements) {
     let iterCounts = measurements.data.xs;
-    let maxIters = Math.max(...iterCounts);
+    let maxIters = iterCounts.reduce((acc, x) => Math.max(acc, x));
     let exponent = 3 * Math.floor(Math.log10(maxIters) / 3);
 
     let avg_times = measurements.avgTimes;
     let scaled_numbers = [...avg_times.sample.numbers];
-    let typical = Math.max(...scaled_numbers);
+    let typical = scaled_numbers.reduce((acc, x) => Math.max(acc, x));
     let unit = scaleValues(typical, scaled_numbers);
     let scaled_avg_times = new Sample(scaled_numbers);
     let mean = scaled_avg_times.mean();
@@ -439,9 +448,9 @@ function plotPdf(id, outputDirectory, measurements) {
         "pdf.svg",
     );
 
-    let min_x = Math.min(...xs);
-    let max_x = Math.max(...xs);
-    let max_y = Math.max(...ys) * 1.1;
+    let min_x = xs.reduce((acc, x) => Math.min(acc, x));
+    let max_x = xs.reduce((acc, x) => Math.max(acc, x));
+    let max_y = ys.reduce((acc, y) => Math.max(acc, y)) * 1.1;
 
     let script = `set output '${figurePath}'
 set title '${id.title}'
