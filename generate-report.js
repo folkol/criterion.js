@@ -118,15 +118,13 @@ function generateGroupReport(group, outputDirectory) {
     GnuPlotter.violin(reportDir, group);
 
     let context = {
-        group_id: group.groupReport.name,
+        name: group.groupReport.name,
         groupReport: group.groupReport,
 
-        thumbnail_width: 450,
-        thumbnail_height: 300,
-
-        // line_chart: line_path.map(|p| p.to_string_lossy().into_owned()),
-
-        benchmarks: group.functionLinks,
+        benchmarks: group.functionLinks.map(f => ({
+            path: f.pathOrNull,
+            name: f.name
+        }))
     };
 
     let report_path = path.join(reportDir, 'index.html');
