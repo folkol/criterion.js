@@ -331,6 +331,10 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
     script += `${max_iters * x_scale} ${point}\n`;
     script += "e\n";
 
+    script += `0 0 0\n`;
+    script += `${max_iters * x_scale} ${lb2} ${ub2}\n`;
+    script += "e\n";
+
     gnuplot(script);
 }
 
@@ -625,10 +629,10 @@ function generatePlotsAndReport(
     plotAdditional(id, outputDirectory, 'Std. Dev.', 'stdDev.svg', measurements.distributions.stdDev, measurements.absoluteEstimates.stdDev);
     plotAdditional(id, outputDirectory, 'MAD', 'mad.svg', measurements.distributions.medianAbsDev, measurements.absoluteEstimates.medianAbsDev);
     let additional_plots = [
-        {url:'mean.svg', name: 'Mean'},
-        {url:'median.svg', name: 'Median'},
-        {url:'stdDev.svg', name: 'Std. Dev.'},
-        {url:'mad.svg', name: 'MAD'}
+        {url: 'mean.svg', name: 'Mean'},
+        {url: 'median.svg', name: 'Median'},
+        {url: 'stdDev.svg', name: 'Std. Dev.'},
+        {url: 'mad.svg', name: 'MAD'}
         // new Plot("Typical", "typical.svg"),
     ];
     if (measurements.absoluteEstimates.slope) {
