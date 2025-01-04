@@ -8,9 +8,8 @@ import {formatMeasurement, JsonReport} from "./report.js";
 import {GnuPlotter} from "./gnuplotter.js";
 
 function generateBenchmarkReport(benchmark, outputDirectory) {
-    // let {measurements, statistics} = benchmark;
     console.log('generating plots and report for', benchmark.title);
-    let reportDir = path.join(outputDirectory, benchmark.directoryName, "report");
+    let reportDir = path.join(outputDirectory, slugify(benchmark.groupId), slugify(benchmark.functionId), "report");
     fs.mkdirSync(reportDir, {recursive: true});
 
     let timeInterval = (est) => {
@@ -143,7 +142,8 @@ class Benchmark {
         }
 
         this.title = `${groupId}/${functionId}`;
-        this.directoryName = `${slugify(groupId)}/${slugify(functionId)}`;
+        this.groupId = groupId;
+        this.functionId = functionId;
 
         let {iters, times, averages, tukey} = measurements;
         if (!isNumericArray(iters)) {
