@@ -85,6 +85,26 @@ function generatePlotsAndReport(
     fs.writeFileSync(report_path, output);
 }
 
+/**
+ * @typedef {Object} Benchmark
+ * @property {string} name
+ * @property {string} path
+ */
+
+/**
+ * @typedef {Object} Group
+ * @property {string} name
+ * @property {string} path
+ * @property {Benchmark[]} benchmarks
+ * @property {string[]} funcs
+ * @property {number[][]} allCurves
+ */
+
+/**
+ * Generates report for the given group.
+ * @param {Group} group - The group object.
+ * @param {string} outputDirectory - Where to write the report
+ */
 function generateGroupReport(group, outputDirectory) {
     let reportDir = path.join(outputDirectory, slugify(group.name), 'report');
     fs.mkdirSync(reportDir, {recursive: true})
@@ -93,7 +113,7 @@ function generateGroupReport(group, outputDirectory) {
 
     let context = {
         name: group.name,
-        benchmarks: group.benchmarks
+        benchmarks: group.benchmarks // name + path
     };
 
     let report_path = path.join(reportDir, 'index.html');
@@ -222,10 +242,10 @@ function loadBenchmark(benchmarkFile) {
     };
 }
 
-function loadBenchmarks(outputDir) {
+function loadBenchmarksAndGenerateReports(outputDir) {
     let benchmarkFiles = listBenchmarks(outputDir);
 
-    console.log(`Found ${benchmarkFiles.length} benchmarks.`);
+    console.log(`Found ${benchmarkFiles.length} benchmark files.`);
 
     let benchmarks = [];
     for (let benchmarkFile of benchmarkFiles) {
@@ -244,6 +264,23 @@ function loadBenchmarks(outputDir) {
     return benchmarks;
 }
 
+/**
+ * @typedef {Object} Benchmark
+ * @property {string} name
+ * @property {string} path
+ */
+
+/**
+ * @typedef {Object} IndexGroup
+ * @property {string} name
+ * @property {string} path
+ * @property {Benchmark[]} benchmarks
+ */
+
+/**
+ * @param {string} outputDir
+ * @param {IndexGroup[]} groups
+ */
 function writeFinalReport(outputDir, groups) {
     let reportDir = path.join(outputDir, "report");
     fs.mkdirSync(reportDir, {recursive: true});
@@ -297,14 +334,15 @@ function toPresentationGroup(group, outputDir) {
 async function main() {
     let outputDir = outputDirOrDie();
 
+    let benchmarks = loadBenchmarksAndGenerateReports(outputDir);
     let benchmarksByGroupId = {};
-    for (let benchmark of loadBenchmarks(outputDir)) {
+    for (let benchmark of benchmarks) {
         (benchmarksByGroupId[benchmark.groupId] ??= []).push(benchmark)
     }
 
     let groups = Object.values(benchmarksByGroupId)
         .map(group => toPresentationGroup(group, outputDir))
-        .toSorted((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => a.name.localeCompare(b.name));
 
     for (let group of groups) {
         generateGroupReport(group, outputDir);
