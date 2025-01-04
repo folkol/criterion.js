@@ -15,11 +15,10 @@ export class GnuPlotter {
         let maxIters = iterCounts.reduce((acc, x) => Math.max(acc, x));
         let exponent = 3 * Math.floor(Math.log10(maxIters) / 3);
 
-        let avg_times = measurements.averages;
-        let scaled_numbers = [...avg_times];
-        let typical = scaled_numbers.reduce((acc, x) => Math.max(acc, x));
-        let unit = scaleValues(typical, scaled_numbers);
-        let scaled_avg_times = new Sample(scaled_numbers);
+        let scaledNumbers = Array.from(measurements.averages);
+        let typical = scaledNumbers.reduce((acc, x) => Math.max(acc, x));
+        let unit = scaleValues(typical, scaledNumbers);
+        let scaled_avg_times = new Sample(scaledNumbers);
         let mean = scaled_avg_times.mean();
         let [xs, ys] = sweepAndEstimate(scaled_avg_times, null, mean);
 
@@ -67,7 +66,7 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
         let severeOutliers = [];
 
         let [lost, lomt, himt, hist] = measurements.tukey;
-        for (let [n, x, y] of avg_times.map((x, i) => [
+        for (let [n, x, y] of measurements.averages.map((x, i) => [
             x,
             scaled_avg_times.numbers[i],
             ys[i]
@@ -285,9 +284,8 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
         GnuPlotter.doPlot(script);
     }
 
-    function
-
-    static statistic(title, reportDir, statistic, filename, distribution, estimates) {
+    static statistic(title, filename, statistic) {
+        let estimates = statistic.estimates;
         let typical = estimates.ub;
         let ci_values = [estimates.lb, estimates.ub, estimates.point];
 
@@ -296,7 +294,7 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
 
         let start = lb - (ub - lb) / 9.;
         let end = ub + (ub - lb) / 9.;
-        let scaled_xs = [...distribution];
+        let scaled_xs = [...statistic.bootstrap];
         scaleValues(typical, scaled_xs);
         let scaled_xs_sample = new Sample(scaled_xs);
 
@@ -326,10 +324,8 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
             kde_xs_sample.numbers.reduce((acc, x) => Math.max(acc, x))
         ];
 
-        let figurePath = path.join(reportDir, filename);
-
-        let script = `set output '${figurePath}'
-set title '${gnuQuote(title)}: ${gnuQuote(statistic)}'
+        let script = `set output '${filename}'
+set title '${gnuQuote(title)}'
 set xtics nomirror
 set xlabel 'Average time (${unit})'
 set xrange [${xMin}:${xMax}]

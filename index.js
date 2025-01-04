@@ -57,8 +57,7 @@ export class BenchmarkId {
 
         this.groupId = groupId;
         this.functionId = functionId;
-        this.fullId = `${groupId}/${functionId}`;
-        this.title = this.fullId;
+        this.title = `${groupId}/${functionId}`;
         this.directoryName = `${slugify(groupId)}/${slugify(functionId)}`;
         this.measurements = measurements;
         this.statistics = statistics;

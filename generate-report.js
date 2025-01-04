@@ -8,54 +8,54 @@ import {formatMeasurement, JsonReport} from "./report.js";
 import {GnuPlotter} from "./gnuplotter.js";
 
 function generateBenchmarkReport(benchmark, outputDirectory) {
-    let {measurements, statistics} = benchmark;
-    let title = benchmark.id.title;
-
-    console.log('generating plots and report for', title);
-    let reportDir = path.join(outputDirectory, benchmark.id.directoryName, "report");
+    // let {measurements, statistics} = benchmark;
+    console.log('generating plots and report for', benchmark.title);
+    let reportDir = path.join(outputDirectory, benchmark.directoryName, "report");
     fs.mkdirSync(reportDir, {recursive: true});
 
     let timeInterval = (est) => {
+        let {lb, point, ub} = est.estimates;
         return {
-            lower: formatMeasurement(est.lb),
-            point: formatMeasurement(est.point),
-            upper: formatMeasurement(est.ub),
+            lower: formatMeasurement(lb),
+            point: formatMeasurement(point),
+            upper: formatMeasurement(ub),
         }
     };
     let r2Interval = (est) => {
+        let {lb, point, ub} = est.estimates;
         let format = x => Slope.rSquared(x, data).toFixed(7);
         return {
-            lower: format(est.lb),
-            point: format(est.point),
-            upper: format(est.ub),
+            lower: format(lb),
+            point: format(point),
+            upper: format(ub),
         };
     };
 
-    let data = {xs: measurements.iters, ys: measurements.times};
+    let data = {xs: benchmark.measurements.iters, ys: benchmark.measurements.times};
 
-    GnuPlotter.pdfSmall(reportDir, measurements.averages);
-    GnuPlotter.pdf(title, reportDir, measurements);
+    GnuPlotter.pdfSmall(reportDir, benchmark.measurements.averages);
+    GnuPlotter.pdf(benchmark.title, reportDir, benchmark.measurements);
 
-    GnuPlotter.regressionSmall(reportDir, measurements, statistics);
-    GnuPlotter.regression(title, reportDir, measurements, statistics);
+    GnuPlotter.regressionSmall(reportDir, benchmark.measurements, benchmark.statistics);
+    GnuPlotter.regression(benchmark.title, reportDir, benchmark.measurements, benchmark.statistics);
 
-    GnuPlotter.statistic(title, reportDir, 'Mean', 'mean.svg', statistics.mean.bootstrap, statistics.mean.estimates);
-    GnuPlotter.statistic(title, reportDir, 'Median', 'median.svg', statistics.median.bootstrap, statistics.median.estimates);
-    GnuPlotter.statistic(title, reportDir, 'Std. Dev.', 'stdDev.svg', statistics.stdDev.bootstrap, statistics.stdDev.estimates);
-    GnuPlotter.statistic(title, reportDir, 'MAD', 'mad.svg', statistics.medianAbsDev.bootstrap, statistics.medianAbsDev.estimates);
-    GnuPlotter.statistic(title, reportDir, 'Slope', 'slope.svg', statistics.slope.bootstrap, statistics.slope.estimates);
+    GnuPlotter.statistic(`${benchmark.title}: Mean`, path.join(reportDir, 'mean.svg'), benchmark.statistics.mean);
+    GnuPlotter.statistic(`${benchmark.title}: Median`, path.join(reportDir, 'median.svg'), benchmark.statistics.median);
+    GnuPlotter.statistic(`${benchmark.title}: Std. Dev.`, path.join(reportDir, 'stdDev.svg'), benchmark.statistics.stdDev);
+    GnuPlotter.statistic(`${benchmark.title}: MAD`, path.join(reportDir, 'mad.svg'), benchmark.statistics.medianAbsDev);
+    GnuPlotter.statistic(`${benchmark.title}: Slope`, path.join(reportDir, 'slope.svg'), benchmark.statistics.slope);
 
     let context = {
-        title: title,
-        confidence: statistics.slope.estimates.cl.toFixed(2),
+        title: benchmark.title,
+        confidence: benchmark.statistics.slope.estimates.cl.toFixed(2),
 
         additionalStatistics: [
-            {name: "Mean", ...timeInterval(statistics.mean.estimates)},
-            {name: "Median", ...timeInterval(statistics.median.estimates)},
-            {name: "Std. Dev.", title: "Standard Deviation", ...timeInterval(statistics.stdDev.estimates)},
-            {name: "Slope", ...timeInterval(statistics.slope.estimates),},
-            {name: "MAD", title: "Mean Absolute Deviation", ...timeInterval(statistics.medianAbsDev.estimates)},
-            {name: "R²", title: "Coefficient of Determination", ...r2Interval(statistics.slope.estimates)},
+            {name: "Mean", ...timeInterval(benchmark.statistics.mean)},
+            {name: "Median", ...timeInterval(benchmark.statistics.median)},
+            {name: "Std. Dev.", title: "Standard Deviation", ...timeInterval(benchmark.statistics.stdDev)},
+            {name: "Slope", ...timeInterval(benchmark.statistics.slope),},
+            {name: "MAD", title: "Mean Absolute Deviation", ...timeInterval(benchmark.statistics.medianAbsDev)},
+            {name: "R²", title: "Coefficient of Determination", ...r2Interval(benchmark.statistics.slope)},
         ],
         additionalPlots: [
             {name: 'Mean', url: 'mean.svg'},
@@ -135,7 +135,11 @@ function loadBenchmark(benchmarkFile) {
 
 class Benchmark {
     constructor(groupId, functionId, measurements, statistics) {
-        this.id = new BenchmarkId(groupId, functionId)
+        let benchmarkId = new BenchmarkId(groupId, functionId);
+        this.groupId = benchmarkId.groupId;
+        this.functionId = benchmarkId.functionId;
+        this.title = benchmarkId.title;
+        this.directoryName = benchmarkId.directoryName;
 
         let {iters, times, averages, tukey} = measurements;
         if (!isNumericArray(iters)) {
@@ -171,7 +175,7 @@ function loadBenchmarks(outputDir) {
     return listBenchmarks(outputDir)
         .map(loadBenchmark)
         .filter(benchmark => benchmark)
-        .sort((a, b) => a.id.fullId.localeCompare(b.id.fullId));
+        .sort((a, b) => a.title.localeCompare(b.title));
 }
 
 function writeReport(reportDir, template, context) {
@@ -198,11 +202,11 @@ function getOutputDirOrDie() {
 }
 
 function toPresentationGroup(group, outputDir) {
-    let groupId = group[0].id.groupId;
+    let groupId = group[0].groupId;
 
     let functionAverages = {};
     for (let benchmark of group) {
-        functionAverages[benchmark.id.functionId] = benchmark.measurements.averages;
+        functionAverages[benchmark.functionId] = benchmark.measurements.averages;
     }
 
     let benchmarks = Object.keys(functionAverages)
@@ -223,7 +227,7 @@ function toPresentationGroup(group, outputDir) {
 function createPresentationGroups(benchmarks, outputDir) {
     let benchmarksByGroupId = {};
     for (let benchmark of benchmarks) {
-        (benchmarksByGroupId[benchmark.id.groupId] ??= []).push(benchmark)
+        (benchmarksByGroupId[benchmark.groupId] ??= []).push(benchmark)
     }
 
     return Object.values(benchmarksByGroupId)
