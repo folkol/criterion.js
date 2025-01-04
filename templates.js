@@ -189,19 +189,13 @@ let templates = {
                         <tr>
                             <td>
                                 <a href="pdf.svg">
-                                    <img src="pdf_small.svg" alt="PDF of Slope" width="{{thumbnail_width}}" height="{{thumbnail_height}}" />
+                                    <img src="pdf_small.svg" alt="PDF of Slope" width="450" height="300" />
                                 </a>
                             </td>
                             <td>
-                                {{#if slope }}
                                 <a href="regression.svg">
-                                    <img src="regression_small.svg" alt="Regression" width="{{thumbnail_width}}" height="{{thumbnail_height}}" />
+                                    <img src="regression_small.svg" alt="Regression" width="450" height="300" />
                                 </a>
-                                {{else}}
-                                <a href="iteration_times.svg">
-                                    <img src="iteration_times_small.svg" alt="Iteration Times" width="{{thumbnail_width}}" height="{{thumbnail_height}}" />
-                                </a>
-                                {{/if}}
                             </td>
                         </tr>
                     </tbody>
@@ -220,56 +214,17 @@ let templates = {
                             </tr>
                         </thead>
                         <tbody>
-                            {{#if slope }}
+                        {{#each additional_statistics}}
                             <tr>
-                                <td>Slope</td>
-                                <td class="ci-bound">{{slope.lower}}</td>
-                                <td>{{slope.point}}</td>
-                                <td class="ci-bound">{{slope.upper}}</td>
+                                <td>{{this.name}}</td>
+                                <td class="ci-bound">{{this.lower}}</td>
+                                <td>{{this.point}}</td>
+                                <td class="ci-bound">{{this.upper}}</td>
                             </tr>
-                            {{/if}}
-                            {{#if throughput }}
-                            <tr>
-                                <td>Throughput</td>
-                                <td class="ci-bound">{{throughput.lower}}</td>
-                                <td>{{throughput.point}}</td>
-                                <td class="ci-bound">{{throughput.upper}}</td>
-                            </tr>
-                            {{/if}}
-                            <tr>
-                                <td>R&#xb2;</td>
-                                <td class="ci-bound">{{r2.lower}}</td>
-                                <td>{{r2.point}}</td>
-                                <td class="ci-bound">{{r2.upper}}</td>
-                            </tr>
-                            <tr>
-                                <td>Mean</td>
-                                <td class="ci-bound">{{mean.lower}}</td>
-                                <td>{{mean.point}}</td>
-                                <td class="ci-bound">{{mean.upper}}</td>
-                            </tr>
-                            <tr>
-                                <td title="Standard Deviation">Std. Dev.</td>
-                                <td class="ci-bound">{{std_dev.lower}}</td>
-                                <td>{{std_dev.point}}</td>
-                                <td class="ci-bound">{{std_dev.upper}}</td>
-                            </tr>
-                            <tr>
-                                <td>Median</td>
-                                <td class="ci-bound">{{median.lower}}</td>
-                                <td>{{median.point}}</td>
-                                <td class="ci-bound">{{median.upper}}</td>
-                            </tr>
-                            <tr>
-                                <td title="Median Absolute Deviation">MAD</td>
-                                <td class="ci-bound">{{mad.lower}}</td>
-                                <td>{{mad.point}}</td>
-                                <td class="ci-bound">{{mad.upper}}</td>
-                            </tr>
+                        {{/each}}
                         </tbody>
                     </table>
                 </div>
-                {{#if additional_plots }}
                 <div class="additional_plots">
                     <h4>Additional Plots:</h4>
                     <ul>
@@ -280,27 +235,20 @@ let templates = {
                         {{/each}}
                     </ul>
                 </div>
-                {{/if}}
             </section>
             <section class="explanation">
                 <h4>Understanding this report:</h4>
                 <p>The plot on the left displays the average time per iteration for this benchmark. The shaded region
                     shows the estimated probability of an iteration taking a certain amount of time, while the line
                     shows the mean.</p>
-                {{#if slope }}
                 <p>The plot on the right shows the linear regression calculated from the measurements. Each point
                     represents a sample, though here it shows the total time for the sample rather than time per
                     iteration. The line is the line of best fit for these measurements.</p>
-                {{else}}
-                <p>The plot on the right shows the average time per iteration for the samples. Each point 
-                    represents one sample.</p>
-                {{/if}}
             </section>
         </div>
     </div>
     <div id="footer">
-        <p>This report was generated by Criterion.js, a nascent JavaScript-port of
-            <a href="https://github.com/bheisler/criterion.rs">Criterion.rs</a>.</p>
+        <p>This report was generated by Criterion.js, a nascent JavaScript-port of <a href="https://github.com/bheisler/criterion.rs">Criterion.rs</a>.</p>
     </div>
 </body>
 

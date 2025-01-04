@@ -32,6 +32,15 @@ function generatePlotsAndReport(
             upper: formatMeasurement(upperBound),
         }
     };
+    let r2_interval = (est) => {
+        let {lowerBound, upperBound} = est.confidenceInterval;
+        let format = x => Slope.rSquared(x, data).toFixed(7);
+        return {
+            lower: format(lowerBound),
+            point: format(est.pointEstimate),
+            upper: format(upperBound),
+        };
+    };
 
     let data = measurements.data;
 
@@ -58,29 +67,16 @@ function generatePlotsAndReport(
 
     let context = {
         title: title,
-        confidence:
-            typical_estimate.confidenceInterval.confidenceLevel.toFixed(2),
-        thumbnail_width: 450,
-        thumbnail_height: 300,
+        confidence: typical_estimate.confidenceInterval.confidenceLevel.toFixed(2),
 
-        slope: estimates.slope
-            ? time_interval(estimates.slope)
-            : null,
-        mean: time_interval(estimates.mean),
-        median: time_interval(estimates.median),
-        mad: time_interval(estimates.medianAbsDev),
-        std_dev: time_interval(estimates.stdDev),
-        r2: {
-            lower: Slope.rSquared(
-                typical_estimate.confidenceInterval.lowerBound,
-                data,
-            ).toFixed(7),
-            point: Slope.rSquared(typical_estimate.pointEstimate, data).toFixed(7),
-            upper: Slope.rSquared(
-                typical_estimate.confidenceInterval.upperBound,
-                data,
-            ).toFixed(7),
-        },
+        additional_statistics: [
+            {name: "Mean", ...time_interval(estimates.mean)},
+            {name: "Median", ...time_interval(estimates.median)},
+            {name: "Std. Dev.", ...time_interval(estimates.stdDev)},
+            {name: "Slope", ...time_interval(estimates.slope)},
+            {name: "MAD", ...time_interval(estimates.medianAbsDev)},
+            {name: "R²", ...r2_interval(typical_estimate)},
+        ],
         additional_plots,
         comparison: null,
     };
