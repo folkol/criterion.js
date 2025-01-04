@@ -202,6 +202,35 @@ function outputDirOrDie() {
     return process.argv[2];
 }
 
+function toPresentationGroup(group, outputDir) {
+    let groupId = group[0].groupId;
+
+    let functionIds = [];
+    let measurements = {};
+    for (let benchmark of group) {
+        let functionId = benchmark.functionId;
+        functionIds.push(functionId);
+        measurements[functionId] = benchmark.measurements;
+    }
+
+    let benchmarks = Array.from(new Set(functionIds))
+        .sort()
+        .map((f) => ({
+            name: f,
+            path: path.join(outputDir, slugify(groupId), slugify(f))
+        }));
+
+    let allCurves = Object.values(measurements).map(x => x.avgTimes.sample.numbers);
+    let funcs = Object.keys(measurements);
+    return {
+        name: groupId,
+        path: path.join(outputDir, slugify(groupId), "report", "index.html"),
+        funcs,
+        allCurves,
+        benchmarks
+    };
+}
+
 async function main() {
     let outputDir = outputDirOrDie();
 
@@ -210,40 +239,9 @@ async function main() {
         (benchmarksByGroupId[benchmark.groupId] ??= []).push(benchmark)
     }
 
-    let groups = Object.values(benchmarksByGroupId).map(group => {
-            let groupId = group[0].groupId;
-            let functionIds = [];
-            let measurements = {};
-            for (let benchmark of group) {
-                let functionId = benchmark.functionId;
-                functionIds.push(functionId);
-                measurements[functionId] = benchmark.measurements;
-            }
-
-            let uniqueSortedFunctionIds = [...new Set(functionIds)].toSorted();
-            let benchmarks = uniqueSortedFunctionIds.map((f) => ({
-                name: f,
-                path: path.join(outputDir, slugify(groupId), slugify(f))
-            }));
-
-            let reportPath = path.join(outputDir, slugify(groupId), "report", "index.html");
-            let groupReport = {
-                name: groupId,
-                pathOrNull: reportPath
-            };
-
-            let allCurves = Object.values(measurements).map(x => x.avgTimes.sample.numbers);
-            let funcs = Object.keys(measurements);
-            return {
-                name: groupReport.name,
-                path: groupReport.pathOrNull,
-                funcs,
-                allCurves,
-                benchmarks
-            };
-        }
-    );
-    groups.sort((a, b) => a.name.localeCompare(b.name));
+    let groups = Object.values(benchmarksByGroupId)
+        .map(group => toPresentationGroup(group, outputDir))
+        .toSorted((a, b) => a.name.localeCompare(b.name));
 
     for (let group of groups) {
         generateGroupReport(group, outputDir);
