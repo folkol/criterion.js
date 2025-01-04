@@ -27,7 +27,7 @@ class Measurements {
             throw new TypeError('expected `measurements.tukey` to be a numeric array');
         }
 
-        return new Measurements(iters, times, averages, tukey)
+        return new this(iters, times, averages, tukey)
     }
 }
 
@@ -47,7 +47,7 @@ class Estimates {
                 throw new TypeError(`Expected '${p}' to be a number, was '${typeof p}'`)
             }
         }
-        return new Estimates(cl, lb, ub, se, point);
+        return new this(cl, lb, ub, se, point);
     }
 }
 
@@ -66,7 +66,7 @@ class Statistic {
         if (!isNumericArray(pojo.bootstrap)) {
             throw new TypeError(`Expected bootstrap to be a numeric array`)
         }
-        return new Statistic(Estimates.parse(estimates), bootstrap);
+        return new this(Estimates.parse(estimates), bootstrap);
     }
 }
 
@@ -81,7 +81,7 @@ class Statistics {
 
     static parse(pojo) {
         let {mean, median, medianAbsDev, slope, stdDev} = pojo;
-        return new Statistics(
+        return new this(
             Statistic.parse('mean', mean),
             Statistic.parse('median', median),
             Statistic.parse('medianAbsDev', medianAbsDev),
@@ -89,59 +89,27 @@ class Statistics {
             Statistic.parse('stdDev', stdDev)
         );
     }
+
+    static build(estimates, distributions) {
+        let {
+            mean,
+            median,
+            medianAbsDev,
+            slope,
+            stdDev
+        } = Object.fromEntries(Object.keys(estimates).map(statistic => [
+            statistic, new Statistic(new Estimates(
+                    estimates[statistic].confidenceInterval.confidenceLevel,
+                    estimates[statistic].confidenceInterval.lowerBound,
+                    estimates[statistic].confidenceInterval.upperBound,
+                    estimates[statistic].standardError,
+                    estimates[statistic].pointEstimate,
+                ),
+                distributions[statistic].numbers
+            )]));
+        return new this(mean, median, medianAbsDev, slope, stdDev);
+    }
 }
-
-
-// export class Benchmark {
-//     constructor(groupId, functionId, measurements, statistics) {
-//         this.title = `${groupId}/${functionId}`;
-//         this.groupId = groupId;
-//         this.functionId = functionId;
-//         this.measurements = measurements;
-//         this.statistics = statistics;
-//     }
-//
-//     static build(id, iters, times, averages, tukey, estimates, distributions) {
-//         let measurements = new Measurements(
-//             iters,
-//             times,
-//             averages,
-//             tukey,
-//         );
-//         let pivot = Object.fromEntries(Object.keys(estimates).map(statistic => [
-//             statistic, {
-//                 estimates: {
-//                     cl: estimates[statistic].confidenceInterval.confidenceLevel,
-//                     lb: estimates[statistic].confidenceInterval.lowerBound,
-//                     ub: estimates[statistic].confidenceInterval.upperBound,
-//                     se: estimates[statistic].standardError,
-//                     point: estimates[statistic].pointEstimate,
-//                 },
-//                 bootstrap: distributions[statistic].numbers
-//             }
-//         ]));
-//         console.log(pivot);
-//         let {mean, median, medianAbsDev, slope, stdDev} = pivot;
-//         let statistics = new Statistics(mean, median, medianAbsDev, slope, stdDev);
-//         return new Benchmark(id.groupId, id.functionId, measurements, statistics);
-//     }
-//
-//     static parse(pojo) {
-//         let {groupId, functionId, measurements, statistics} = pojo;
-//         if (typeof groupId !== 'string') {
-//             throw new Error(`expected \`groupId\` (${groupId}) to be 'string', was '${typeof groupId}'`);
-//         }
-//         if (typeof functionId !== 'string') {
-//             throw new Error(`expected \`functionId\` (${functionId}) to be 'string', was '${typeof functionId}'`);
-//         }
-//         return new Benchmark(
-//             groupId,
-//             functionId,
-//             Measurements.parse(measurements),
-//             Statistics.parse(statistics)
-//         );
-//     }
-// }
 
 export class ReportData {
     constructor(groupId, functionId, measurements, statistics) {
@@ -158,26 +126,14 @@ export class ReportData {
     static build(id, iters, times, averages, tukey, estimates, distributions) {
         let groupId = id.groupId;
         let functionId = id.functionId;
-        let measurements = {
-            iters,
-            times,
-            averages,
-            tukey,
-        };
-        let statistics = Object.fromEntries(Object.keys(estimates).map(statistic => [
-            statistic, {
-                estimates: {
-                    cl: estimates[statistic].confidenceInterval.confidenceLevel,
-                    lb: estimates[statistic].confidenceInterval.lowerBound,
-                    ub: estimates[statistic].confidenceInterval.upperBound,
-                    se: estimates[statistic].standardError,
-                    point: estimates[statistic].pointEstimate,
-                },
-                bootstrap: distributions[statistic].numbers
-            }
-        ]));
-        return new ReportData(groupId, functionId, measurements, statistics)
+        return new this(
+            groupId,
+            functionId,
+            new Measurements(iters, times, averages, tukey),
+            Statistics.build(estimates, distributions)
+        );
     }
+
     static parse(pojo) {
         let {groupId, functionId, measurements, statistics} = pojo;
         if (typeof groupId !== 'string') {
@@ -186,7 +142,7 @@ export class ReportData {
         if (typeof functionId !== 'string') {
             throw new Error(`expected \`functionId\` (${functionId}) to be 'string', was '${typeof functionId}'`);
         }
-        return new ReportData(
+        return new this(
             groupId,
             functionId,
             Measurements.parse(measurements),

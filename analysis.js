@@ -233,6 +233,15 @@ class Estimate {
         this.pointEstimate = pointEstimate;
         this.standardError = standardError;
     }
+
+    static build(cl, pointEstimate, distribution) {
+        let [lb, ub] = distribution.confidenceInterval(cl);
+        return new this(
+            new ConfidenceInterval(cl, lb, ub),
+            pointEstimate,
+            distribution.stdDev(),
+        );
+    }
 }
 
 class Estimates {
@@ -245,21 +254,12 @@ class Estimates {
     }
 
     static build(distributions, points, cl) {
-        function toEstimate(pointEstimate, distribution) {
-            let [lb, ub] = distribution.confidenceInterval(cl);
-            return new Estimate(
-                new ConfidenceInterval(cl, lb, ub),
-                pointEstimate,
-                distribution.stdDev(),
-            );
-        }
-
-        return new Estimates(
-            toEstimate(points.mean, distributions.mean),
-            toEstimate(points.median, distributions.median),
-            toEstimate(points.mad, distributions.medianAbsDev),
+        return new this(
+            Estimate.build(cl, points.mean, distributions.mean),
+            Estimate.build(cl, points.median, distributions.median),
+            Estimate.build(cl, points.mad, distributions.medianAbsDev),
             null,
-            toEstimate(points.stdDev, distributions.stdDev),
+            Estimate.build(cl, points.stdDev, distributions.stdDev),
         );
     }
 }
