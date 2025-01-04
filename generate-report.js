@@ -194,7 +194,7 @@ function loadBenchmark(benchmarkFile) {
     try {
         return new Benchmark(groupId, functionId, measurements, statistics);
     } catch (error) {
-        console.error(`[WARN] skipping:`, benchmarkFile, error);
+        console.error(`[WARN] couldn't create Benchmark instance, skipping:`, benchmarkFile, error);
     }
 }
 
@@ -283,11 +283,11 @@ function toPresentationGroup(group, outputDir) {
     let groupId = group[0].id.groupId;
 
     let functionIds = [];
-    let measurements = {};
+    let curvesById = {};
     for (let benchmark of group) {
         let functionId = benchmark.id.functionId;
         functionIds.push(functionId);
-        measurements[functionId] = reconstructOldMeasurements(benchmark.measurements, benchmark.statistics);
+        curvesById[functionId] = benchmark.measurements.averages;
     }
 
     let benchmarks = Array.from(new Set(functionIds))
@@ -297,8 +297,8 @@ function toPresentationGroup(group, outputDir) {
             path: path.join(outputDir, slugify(groupId), slugify(f))
         }));
 
-    let allCurves = Object.values(measurements).map(x => x.avgTimes.sample.numbers);
-    let funcs = Object.keys(measurements);
+    let allCurves = Object.values(curvesById);
+    let funcs = Object.keys(curvesById);
     return {
         name: groupId,
         path: path.join(outputDir, slugify(groupId), "report", "index.html"),
