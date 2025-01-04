@@ -15,16 +15,16 @@ class Measurements {
         let {iters, times, averages, tukey} = pojo;
 
         if (!isNumericArray(iters)) {
-            throw new Error('expected `measurements.iters` to be a numeric array');
+            throw new TypeError('expected `measurements.iters` to be a numeric array');
         }
         if (!isNumericArray(times, iters.length)) {
-            throw new Error('expected `measurements.times` to be a numeric array');
+            throw new TypeError('expected `measurements.times` to be a numeric array');
         }
         if (!isNumericArray(averages, iters.length)) {
-            throw new Error('expected `measurements.averages` to be a numeric array');
+            throw new TypeError('expected `measurements.averages` to be a numeric array');
         }
         if (!isNumericArray(tukey, 4)) {
-            throw new Error('expected `measurements.tukey` to be a numeric array');
+            throw new TypeError('expected `measurements.tukey` to be a numeric array');
         }
 
         return new Measurements(iters, times, averages, tukey)
@@ -32,11 +32,11 @@ class Measurements {
 }
 
 class Estimates {
-    constructor(cl, lb, ub, es, point) {
+    constructor(cl, lb, ub, se, point) {
         this.cl = cl;
         this.lb = lb;
         this.ub = ub;
-        this.es = es;
+        this.se = se;
         this.point = point;
     }
 
@@ -44,7 +44,7 @@ class Estimates {
         let {cl, lb, ub, se, point} = pojo;
         for (let p of [cl, lb, ub, se, point]) {
             if (!Number.isFinite(p)) {
-                throw new Error(`Expected '${p}' to be a number, was '${typeof p}'`)
+                throw new TypeError(`Expected '${p}' to be a number, was '${typeof p}'`)
             }
         }
         return new Estimates(cl, lb, ub, se, point);
@@ -60,16 +60,15 @@ class Statistic {
     static parse(name, pojo) {
         let knownStatistics = ['mean', 'median', 'medianAbsDev', 'slope', 'stdDev'];
         if (!knownStatistics.includes(name)) {
-            throw new Error(`Unknown statistic: ${name}`);
+            throw new TypeError(`Unknown statistic: ${name}`);
         }
         let {estimates, bootstrap} = pojo;
         if (!isNumericArray(pojo.bootstrap)) {
-            throw new Error(`Expected bootstrap to be a numeric array`)
+            throw new TypeError(`Expected bootstrap to be a numeric array`)
         }
         return new Statistic(Estimates.parse(estimates), bootstrap);
     }
 }
-
 
 class Statistics {
     constructor(mean, median, medianAbsDev, slope, stdDev) {
@@ -105,10 +104,10 @@ export class Benchmark {
     static parse(pojo) {
         let {groupId, functionId, measurements, statistics} = pojo;
         if (typeof groupId !== 'string') {
-            throw new Error(`expected \`groupId\` to be 'string', was '${typeof groupId}'`);
+            throw new Error(`expected \`groupId\` (${groupId}) to be 'string', was '${typeof groupId}'`);
         }
         if (typeof functionId !== 'string') {
-            throw new Error(`expected \`functionId\` to be 'string', was '${typeof functionId}'`);
+            throw new Error(`expected \`functionId\` (${functionId}) to be 'string', was '${typeof functionId}'`);
         }
         return new Benchmark(
             groupId,
