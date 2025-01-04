@@ -1,7 +1,6 @@
 import {Slope} from "./analysis.js";
 import path from 'node:path';
 import fs from 'node:fs';
-import {slugify} from "./index.js";
 
 export class Report {
     benchmarkStart(_id, _context) {
@@ -201,113 +200,6 @@ export class CliReport extends Report {
         print(him, "low mild");
         print(him, "high mild");
         print(his, "high severe");
-    }
-}
-
-class ReportLink {
-    constructor(name, pathOrNull) {
-        this.name = name;
-        this.pathOrNull = pathOrNull;
-    }
-
-    static group(outputDir, groupId) {
-        let reportPath = path.join(outputDir, slugify(groupId), "report", "index.html");
-        // let pathOrNull = fs.existsSync(reportPath) ? reportPath : null;
-        return new ReportLink(groupId, reportPath);
-    }
-
-    static individual(outputDir, id) {
-        let reportPath = id.directoryName;
-        let pathOrNull = fs.existsSync(reportPath) ? reportPath : null;
-        return new ReportLink(id.title, pathOrNull);
-    }
-
-    static value(outputDir, groupId, value) {
-        let reportPath = path.join(outputDir, slugify(groupId), slugify(value));
-        let pathOrNull = fs.existsSync(reportPath) ? reportPath : null;
-        return new ReportLink(value, pathOrNull);
-    }
-
-    static function(outputDir, groupId, f) {
-        let pathOrNull = path.join(outputDir, slugify(groupId), slugify(f));
-        return new ReportLink(f, pathOrNull);
-    }
-}
-
-class BenchmarkValueGroup {
-    constructor(value, benchmarks) {
-        this.value = value;
-        this.benchmarks = benchmarks;
-    }
-}
-
-export class HtmlBenchmarkGroup {
-    constructor(groupReport, functionLinks, valueLinks, individualLinks, measurements) {
-        this.groupReport = groupReport;
-        this.functionLinks = functionLinks;
-        this.valueLinks = valueLinks;
-        this.individualLinks = individualLinks;
-        this.measurements = measurements;
-    }
-
-    static fromGroup(outputDir, group) {
-        let groupId = group[0].groupId;
-        let groupReport = ReportLink.group(outputDir, groupId);
-        let functionIds = [];
-        let functionMeasurements = {};
-        let values = [];
-        let individualLinks = new Map;
-        for (let id of group) {
-            let functionId = id.functionId;
-            let value = id.value;
-            let individualLink = ReportLink.individual(outputDir, id);
-            functionIds.push(functionId);
-            functionMeasurements[functionId] = id.measurements;
-            values.push(value);
-            individualLinks.set(`${functionId}-${value}`, individualLink);
-        }
-
-        let uniqueSortedValues = [...new Set(values)];
-        if (values.every((x) => typeof x === "number")) {
-            uniqueSortedValues.sort((a, b) => b - a);
-        } else {
-            uniqueSortedValues.sort();
-        }
-
-        let uniqueSortedFunctionIds = [...new Set(functionIds)].toSorted();
-        let valueGroups = [];
-        for (let value of uniqueSortedValues) {
-            let row = new Set();
-            for (let functionId of uniqueSortedFunctionIds) {
-                let key = `${functionId}-${value}`;
-                let link = individualLinks.get(key);
-                if (link) {
-                    individualLinks.delete(key);
-                    row.add(link);
-                }
-            }
-            let valueOrNull = value
-                ? ReportLink.value(outputDir, groupId, value)
-                : null;
-            valueGroups.push(
-                new BenchmarkValueGroup(valueOrNull, [...row].toSorted()),
-            );
-        }
-
-        let functionLinks = uniqueSortedFunctionIds.map((f) =>
-            ReportLink.function(outputDir, groupId, f),
-        );
-        let valueLinks = uniqueSortedValues.map((value) =>
-            value ? ReportLink.value(outputDir, groupId, value) : null,
-        );
-
-        return new HtmlBenchmarkGroup(
-            groupReport,
-            functionLinks,
-            valueLinks,
-            individualLinks,
-            functionMeasurements
-        );
     }
 }
 

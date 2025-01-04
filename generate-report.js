@@ -4,8 +4,115 @@ import path from "node:path";
 import {BenchmarkId, slugify} from "./index.js";
 import {renderTemplate} from "./templates.js";
 import {Slope} from "./analysis.js";
-import {formatMeasurement, HtmlBenchmarkGroup, JsonReport} from "./report.js";
+import {formatMeasurement, JsonReport} from "./report.js";
 import {GnuPlotter} from "./gnuplotter.js";
+
+class ReportLink {
+    constructor(name, pathOrNull) {
+        this.name = name;
+        this.pathOrNull = pathOrNull;
+    }
+
+    static group(outputDir, groupId) {
+        let reportPath = path.join(outputDir, slugify(groupId), "report", "index.html");
+        // let pathOrNull = fs.existsSync(reportPath) ? reportPath : null;
+        return new ReportLink(groupId, reportPath);
+    }
+
+    static individual(outputDir, id) {
+        let reportPath = id.directoryName;
+        let pathOrNull = fs.existsSync(reportPath) ? reportPath : null;
+        return new ReportLink(id.title, pathOrNull);
+    }
+
+    static value(outputDir, groupId, value) {
+        let reportPath = path.join(outputDir, slugify(groupId), slugify(value));
+        let pathOrNull = fs.existsSync(reportPath) ? reportPath : null;
+        return new ReportLink(value, pathOrNull);
+    }
+
+    static function(outputDir, groupId, f) {
+        let pathOrNull = path.join(outputDir, slugify(groupId), slugify(f));
+        return new ReportLink(f, pathOrNull);
+    }
+}
+
+class BenchmarkValueGroup {
+    constructor(value, benchmarks) {
+        this.value = value;
+        this.benchmarks = benchmarks;
+    }
+}
+
+export class HtmlBenchmarkGroup {
+    constructor(groupReport, functionLinks, valueLinks, individualLinks, measurements) {
+        this.groupReport = groupReport;
+        this.functionLinks = functionLinks;
+        this.valueLinks = valueLinks;
+        this.individualLinks = individualLinks;
+        this.measurements = measurements;
+    }
+
+    static fromGroup(outputDir, group) {
+        let groupId = group[0].groupId;
+        let groupReport = ReportLink.group(outputDir, groupId);
+        let functionIds = [];
+        let functionMeasurements = {};
+        let values = [];
+        let individualLinks = new Map;
+        for (let id of group) {
+            let functionId = id.functionId;
+            let value = id.value;
+            let individualLink = ReportLink.individual(outputDir, id);
+            functionIds.push(functionId);
+            functionMeasurements[functionId] = id.measurements;
+            values.push(value);
+            individualLinks.set(`${functionId}-${value}`, individualLink);
+        }
+
+        let uniqueSortedValues = [...new Set(values)];
+        if (values.every((x) => typeof x === "number")) {
+            uniqueSortedValues.sort((a, b) => b - a);
+        } else {
+            uniqueSortedValues.sort();
+        }
+
+        let uniqueSortedFunctionIds = [...new Set(functionIds)].toSorted();
+        let valueGroups = [];
+        for (let value of uniqueSortedValues) {
+            let row = new Set();
+            for (let functionId of uniqueSortedFunctionIds) {
+                let key = `${functionId}-${value}`;
+                let link = individualLinks.get(key);
+                if (link) {
+                    individualLinks.delete(key);
+                    row.add(link);
+                }
+            }
+            let valueOrNull = value
+                ? ReportLink.value(outputDir, groupId, value)
+                : null;
+            valueGroups.push(
+                new BenchmarkValueGroup(valueOrNull, [...row].toSorted()),
+            );
+        }
+
+        let functionLinks = uniqueSortedFunctionIds.map((f) =>
+            ReportLink.function(outputDir, groupId, f),
+        );
+        let valueLinks = uniqueSortedValues.map((value) =>
+            value ? ReportLink.value(outputDir, groupId, value) : null,
+        );
+
+        return new HtmlBenchmarkGroup(
+            groupReport,
+            functionLinks,
+            valueLinks,
+            individualLinks,
+            functionMeasurements
+        );
+    }
+}
 
 
 function generatePlotsAndReport(
@@ -212,18 +319,21 @@ function writeFinalReport(outputDir, groups) {
     console.log("Wrote", reportPath);
 }
 
-async function main() {
+function outputDirOrDie() {
+    // TODO: add some marker file to confirm that this is a criterion dir?
     if (process.argv.length !== 3 || !fs.existsSync(process.argv[2])) {
         console.error("usage: npx criterion-report path_to_criterion_folder");
         process.exit(1);
     }
-    let outputDir = process.argv[2];
+    return process.argv[2];
+}
+
+async function main() {
+    let outputDir = outputDirOrDie();
 
     let idGroups = {};
     for (let benchmark of loadBenchmarks(outputDir)) {
-        let group = idGroups[benchmark.groupId] || [];
-        group.push(benchmark);
-        idGroups[benchmark.groupId] = group;
+        (idGroups[benchmark.groupId] ??= []).push(benchmark)
     }
 
     let groups = Object.values(idGroups).map((group) =>
