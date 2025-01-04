@@ -216,7 +216,7 @@ let templates = {
                         <tbody>
                         {{#each additionalStatistics}}
                             <tr>
-                                <td>{{this.name}}</td>
+                                <td title="{{this.title}}">{{this.name}}</td>
                                 <td class="ci-bound">{{this.lower}}</td>
                                 <td>{{this.point}}</td>
                                 <td class="ci-bound">{{this.upper}}</td>

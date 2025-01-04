@@ -52,10 +52,10 @@ function generatePlotsAndReport(benchmark, outputDirectory) {
         additionalStatistics: [
             {name: "Mean", ...timeInterval(statistics.mean.estimates)},
             {name: "Median", ...timeInterval(statistics.median.estimates)},
-            {name: "Std. Dev.", ...timeInterval(statistics.stdDev.estimates)},
-            {name: "Slope", ...timeInterval(statistics.slope.estimates)},
-            {name: "MAD", ...timeInterval(statistics.medianAbsDev.estimates)},
-            {name: "R²", ...r2Interval(statistics.slope.estimates)},
+            {name: "Std. Dev.", title: "Standard Deviation", ...timeInterval(statistics.stdDev.estimates)},
+            {name: "Slope", ...timeInterval(statistics.slope.estimates),},
+            {name: "MAD", title: "Mean Absolute Deviation", ...timeInterval(statistics.medianAbsDev.estimates)},
+            {name: "R²", title: "Coefficient of Determination", ...r2Interval(statistics.slope.estimates)},
         ],
         additionalPlots: [
             {name: 'Mean', url: 'mean.svg'},
@@ -187,7 +187,7 @@ function writeFinalReport(outputDir, groups) {
     console.log(`Wrote: ${reportDir}/index.html`);
 }
 
-function outputDirOrDie() {
+function getOutputDirOrDie() {
     // TODO: add some marker file to confirm that this is a criterion dir?
     let maybeCriterionDir = process.argv[2];
     if (process.argv.length !== 3 || !fs.existsSync(maybeCriterionDir)) {
@@ -231,8 +231,8 @@ function createPresentationGroups(benchmarks, outputDir) {
         .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-async function main() {
-    let outputDir = outputDirOrDie();
+function main() {
+    let outputDir = getOutputDirOrDie();
 
     let benchmarks = loadBenchmarks(outputDir);
     for (let benchmark of benchmarks) {
