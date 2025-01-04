@@ -143,6 +143,10 @@ let templates = {
             flex: 0 0 60%
         }
 
+        .additional_stats table {
+            font-family: monospace;
+        }
+
         .additional_plots {
             flex: 1
         }
