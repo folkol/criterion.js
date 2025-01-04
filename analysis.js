@@ -1,3 +1,5 @@
+import {ReportData} from "./models.js";
+
 function tukey(sample) {
     let [q1, _, q3] = sample.percentiles().quartiles();
     let iqr = q3 - q1;
@@ -285,31 +287,6 @@ export class Slope {
     }
 }
 
-class ReportData {
-    constructor(id, iters, times, averages, tukey, estimates, distributions) {
-        this.groupId = id.groupId;
-        this.functionId = id.functionId;
-        this.measurements = {
-            iters,
-            times,
-            averages,
-            tukey,
-        };
-        this.statistics = Object.fromEntries(Object.keys(estimates).map(statistic => [
-            statistic, {
-                estimates: {
-                    cl: estimates[statistic].confidenceInterval.confidenceLevel,
-                    lb: estimates[statistic].confidenceInterval.lowerBound,
-                    ub: estimates[statistic].confidenceInterval.upperBound,
-                    se: estimates[statistic].standardError,
-                    point: estimates[statistic].pointEstimate,
-                },
-                bootstrap: distributions[statistic].numbers
-            }
-        ]));
-    }
-}
-
 export async function common(
     id,
     target,
@@ -349,7 +326,7 @@ export async function common(
     estimates.slope = slope;
     distributions.slope = distribution;
 
-    let reportData = new ReportData(
+    let reportData = ReportData.build(
         id,
         iters,
         times,

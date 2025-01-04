@@ -6,10 +6,10 @@ import {renderTemplate} from "./templates.js";
 import {Slope} from "./analysis.js";
 import {formatMeasurement, JsonReport} from "./report.js";
 import {GnuPlotter} from "./gnuplotter.js";
-import {Benchmark} from "./models.js";
+import {ReportData} from "./models.js";
 
 function generateBenchmarkReport(benchmark, outputDirectory) {
-    console.log('generating plots and report for', benchmark.title);
+    console.log('generating plots and report for', benchmark.title());
     let reportDir = path.join(outputDirectory, slugify(benchmark.groupId), slugify(benchmark.functionId), "report");
     fs.mkdirSync(reportDir, {recursive: true});
 
@@ -34,19 +34,19 @@ function generateBenchmarkReport(benchmark, outputDirectory) {
     };
 
     GnuPlotter.pdfSmall(reportDir, benchmark.measurements.averages);
-    GnuPlotter.pdf(benchmark.title, reportDir, benchmark.measurements);
+    GnuPlotter.pdf(benchmark.title(), reportDir, benchmark.measurements);
 
     GnuPlotter.regressionSmall(reportDir, benchmark.measurements, benchmark.statistics);
-    GnuPlotter.regression(benchmark.title, reportDir, benchmark.measurements, benchmark.statistics);
+    GnuPlotter.regression(benchmark.title(), reportDir, benchmark.measurements, benchmark.statistics);
 
-    GnuPlotter.statistic(`${benchmark.title}: Mean`, path.join(reportDir, 'mean.svg'), benchmark.statistics.mean);
-    GnuPlotter.statistic(`${benchmark.title}: Median`, path.join(reportDir, 'median.svg'), benchmark.statistics.median);
-    GnuPlotter.statistic(`${benchmark.title}: Std. Dev.`, path.join(reportDir, 'stdDev.svg'), benchmark.statistics.stdDev);
-    GnuPlotter.statistic(`${benchmark.title}: MAD`, path.join(reportDir, 'mad.svg'), benchmark.statistics.medianAbsDev);
-    GnuPlotter.statistic(`${benchmark.title}: Slope`, path.join(reportDir, 'slope.svg'), benchmark.statistics.slope);
+    GnuPlotter.statistic(`${benchmark.title()}: Mean`, path.join(reportDir, 'mean.svg'), benchmark.statistics.mean);
+    GnuPlotter.statistic(`${benchmark.title()}: Median`, path.join(reportDir, 'median.svg'), benchmark.statistics.median);
+    GnuPlotter.statistic(`${benchmark.title()}: Std. Dev.`, path.join(reportDir, 'stdDev.svg'), benchmark.statistics.stdDev);
+    GnuPlotter.statistic(`${benchmark.title()}: MAD`, path.join(reportDir, 'mad.svg'), benchmark.statistics.medianAbsDev);
+    GnuPlotter.statistic(`${benchmark.title()}: Slope`, path.join(reportDir, 'slope.svg'), benchmark.statistics.slope);
 
     let context = {
-        title: benchmark.title,
+        title: benchmark.title(),
         confidence: benchmark.statistics.slope.estimates.cl.toFixed(2),
 
         additionalStatistics: [
@@ -117,7 +117,7 @@ function loadBenchmark(benchmarkFile) {
     }
 
     try {
-        return Benchmark.parse(pojo);
+        return ReportData.parse(pojo);
     } catch (error) {
         console.error(`[WARN] couldn't create Benchmark instance, skipping: ${benchmarkFile} (${error.message})`);
         if (process.env.CRITERION_DEBUG) {
@@ -130,7 +130,7 @@ function loadBenchmarks(outputDir) {
     return listBenchmarks(outputDir)
         .map(loadBenchmark)
         .filter(benchmark => benchmark)
-        .sort((a, b) => a.title.localeCompare(b.title));
+        .sort((a, b) => a.title().localeCompare(b.title()));
 }
 
 function writeReport(reportDir, template, context) {

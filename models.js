@@ -92,15 +92,92 @@ class Statistics {
 }
 
 
-export class Benchmark {
+// export class Benchmark {
+//     constructor(groupId, functionId, measurements, statistics) {
+//         this.title = `${groupId}/${functionId}`;
+//         this.groupId = groupId;
+//         this.functionId = functionId;
+//         this.measurements = measurements;
+//         this.statistics = statistics;
+//     }
+//
+//     static build(id, iters, times, averages, tukey, estimates, distributions) {
+//         let measurements = new Measurements(
+//             iters,
+//             times,
+//             averages,
+//             tukey,
+//         );
+//         let pivot = Object.fromEntries(Object.keys(estimates).map(statistic => [
+//             statistic, {
+//                 estimates: {
+//                     cl: estimates[statistic].confidenceInterval.confidenceLevel,
+//                     lb: estimates[statistic].confidenceInterval.lowerBound,
+//                     ub: estimates[statistic].confidenceInterval.upperBound,
+//                     se: estimates[statistic].standardError,
+//                     point: estimates[statistic].pointEstimate,
+//                 },
+//                 bootstrap: distributions[statistic].numbers
+//             }
+//         ]));
+//         console.log(pivot);
+//         let {mean, median, medianAbsDev, slope, stdDev} = pivot;
+//         let statistics = new Statistics(mean, median, medianAbsDev, slope, stdDev);
+//         return new Benchmark(id.groupId, id.functionId, measurements, statistics);
+//     }
+//
+//     static parse(pojo) {
+//         let {groupId, functionId, measurements, statistics} = pojo;
+//         if (typeof groupId !== 'string') {
+//             throw new Error(`expected \`groupId\` (${groupId}) to be 'string', was '${typeof groupId}'`);
+//         }
+//         if (typeof functionId !== 'string') {
+//             throw new Error(`expected \`functionId\` (${functionId}) to be 'string', was '${typeof functionId}'`);
+//         }
+//         return new Benchmark(
+//             groupId,
+//             functionId,
+//             Measurements.parse(measurements),
+//             Statistics.parse(statistics)
+//         );
+//     }
+// }
+
+export class ReportData {
     constructor(groupId, functionId, measurements, statistics) {
-        this.title = `${groupId}/${functionId}`;
         this.groupId = groupId;
         this.functionId = functionId;
         this.measurements = measurements;
         this.statistics = statistics;
     }
 
+    title() {
+        return `${this.groupId}/${this.functionId}`;
+    }
+
+    static build(id, iters, times, averages, tukey, estimates, distributions) {
+        let groupId = id.groupId;
+        let functionId = id.functionId;
+        let measurements = {
+            iters,
+            times,
+            averages,
+            tukey,
+        };
+        let statistics = Object.fromEntries(Object.keys(estimates).map(statistic => [
+            statistic, {
+                estimates: {
+                    cl: estimates[statistic].confidenceInterval.confidenceLevel,
+                    lb: estimates[statistic].confidenceInterval.lowerBound,
+                    ub: estimates[statistic].confidenceInterval.upperBound,
+                    se: estimates[statistic].standardError,
+                    point: estimates[statistic].pointEstimate,
+                },
+                bootstrap: distributions[statistic].numbers
+            }
+        ]));
+        return new ReportData(groupId, functionId, measurements, statistics)
+    }
     static parse(pojo) {
         let {groupId, functionId, measurements, statistics} = pojo;
         if (typeof groupId !== 'string') {
@@ -109,7 +186,7 @@ export class Benchmark {
         if (typeof functionId !== 'string') {
             throw new Error(`expected \`functionId\` (${functionId}) to be 'string', was '${typeof functionId}'`);
         }
-        return new Benchmark(
+        return new ReportData(
             groupId,
             functionId,
             Measurements.parse(measurements),
