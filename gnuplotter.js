@@ -361,9 +361,8 @@ plot '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Bootstrap distri
         GnuPlotter.doPlot(script);
     }
 
-    static violin(reportDir, measurements) {
-        let allCurves = Object.values(measurements.measurements).map(x => new Sample(x.avgTimes.sample.numbers));
-
+    static violin(reportDir, funcs, numbers) {
+        let allCurves = numbers.map(x => new Sample(x))
         let kdes = allCurves.map(avgTimes => {
             let [xs, ys] = sweepAndEstimate(avgTimes, null, avgTimes[0]);
             let yMax = ys.reduce((acc, y) => Math.max(acc, y));
@@ -394,7 +393,6 @@ plot '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Bootstrap distri
         }
         let plotCommand = 'plot ' + plotCommands.join(', ')
 
-        let funcs = Object.keys(measurements.measurements);
         let yTics = [];
         for (let i = 0; i < funcs.length; i++) {
             yTics.push(`'${funcs[i]}' ${i + 0.5}`);
