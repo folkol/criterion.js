@@ -15,6 +15,10 @@ For each of your benchmarks, it does something like this:
 
 Micro-benchmarking is what it is, if your production code isn't executed in a tight loop isolated from the outside world the results from these test might not apply to the real world.
 
+### Do not run on untrusted input
+
+There is some rudimentary input validation in place to mitigate programming errors and similar mistakes, but this package is *not safe for use on untrusted input*. (For example: The plot generator will include the group and function names into Gnuplot scripts before executing them.)
+
 ### Gnuplot
 
 [Gnuplot](https://gnuplot.sourceforge.net) is needed for report generation. (`gnuplot 5.4 patchlevel 8` on macOS seems to work.)

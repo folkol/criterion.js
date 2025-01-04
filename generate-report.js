@@ -151,6 +151,77 @@ function listBenchmarks(directory) {
     return benchmarks;
 }
 
+function isNumericArray(xs, l) {
+    let expectedLength = l ?? xs.length;
+    return Array.isArray(xs) && xs.length === expectedLength && xs.every(Number.isFinite);
+}
+
+function isStatisticsObject(statistic) {
+    let estimates = ['cl', 'lb', 'ub', 'se', 'point'];
+    return isNumericArray(statistic.bootstrap) && estimates.map(e => statistic.estimates[e]).every(Number.isFinite);
+}
+
+function loadBenchmark(benchmarkFile) {
+    let blob = fs.readFileSync(benchmarkFile);
+    let {version, groupId, functionId, measurements, statistics} = JSON.parse(blob);
+
+    if (version === undefined || Number(version) < JsonReport.VERSION) {
+        console.error('[WARN] benchmark data in old format, skipping:', benchmarkFile)
+        return;
+    } else if (version !== JsonReport.VERSION) {
+        console.error(`[WARN] unknown file version '${version}' (current is '${JsonReport.VERSION}'), skipping:`, benchmarkFile);
+        return;
+    }
+
+    if (typeof groupId !== 'string') {
+        console.error('[WARN] expected `groupId` to be a string, was', typeof groupId, 'skipping:', benchmarkFile);
+        return;
+    }
+
+    if (typeof functionId !== 'string') {
+        console.error('[WARN] expected `functionId` to be a string, was', typeof groupId, 'skipping:', benchmarkFile);
+        return;
+    }
+
+    let {iters, times, averages, tukey} = measurements;
+    if (!isNumericArray(iters)) {
+        console.error('[WARN] unexpected `measurements.iters`, skipping:', benchmarkFile)
+        return;
+    }
+    if (!isNumericArray(times, iters.length)) {
+        console.error('[WARN] unexpected `measurements.times`, skipping:', benchmarkFile)
+        return;
+    }
+    if (!isNumericArray(averages, iters.length)) {
+        console.error('[WARN] unexpected `measurements.averages`, skipping:', benchmarkFile)
+        return;
+    }
+    if (!isNumericArray(tukey, 4)) {
+        console.error('[WARN] unexpected `measurements.tukey`, skipping:', benchmarkFile)
+        return;
+    }
+
+    let entries = Object.entries(statistics);
+    let knownStatistics = ['mean', 'median', 'medianAbsDev', 'slope', 'stdDev'];
+    if (entries.length !== 5 || !knownStatistics.every(k => knownStatistics.includes(k))) {
+        console.error(`[WARN] unexpected \`statistics\`, skipping:`, benchmarkFile)
+        return;
+    }
+    for (let [k, v] of entries) {
+        if (!knownStatistics.includes(k) || !isStatisticsObject(v)) {
+            console.error(`[WARN] unexpected \`statistics.${k}\`, skipping:`, benchmarkFile)
+            return;
+        }
+    }
+
+    return {
+        groupId,
+        functionId,
+        measurements: {iters, times, averages, tukey},
+        statistics,
+    };
+}
+
 function loadBenchmarks(outputDir) {
     let benchmarkFiles = listBenchmarks(outputDir);
 
@@ -158,22 +229,14 @@ function loadBenchmarks(outputDir) {
 
     let benchmarks = [];
     for (let benchmarkFile of benchmarkFiles) {
-        let blob = fs.readFileSync(benchmarkFile);
-        let {version, groupId, functionId, measurements, statistics} = JSON.parse(blob);
-        if (version < JsonReport.VERSION || version === undefined) {
-            console.error('[WARN] benchmark data in old format, skipping:', benchmarkFile)
-            continue;
-        } else if (version !== JsonReport.VERSION) {
-            console.error(`[WARN] unknown benchmark version '${version}', current version is '${JsonReport.VERSION}' skipping:`, benchmarkFile)
-            continue;
+        let benchmark = loadBenchmark(benchmarkFile);
+        if (benchmark) {
+            let {groupId, functionId, measurements, statistics} = benchmark;
+            let measurementsReconstructed = reconstructMeasurements(measurements, statistics);
+            let internalBenchmarkId = new BenchmarkId(groupId, functionId, measurementsReconstructed);
+            generatePlotsAndReport(measurementsReconstructed, internalBenchmarkId.title, path.join(outputDir, internalBenchmarkId.directoryName));
+            benchmarks.push(internalBenchmarkId);
         }
-        let measurementsReconstructed = reconstructMeasurements(measurements, statistics);
-
-        let internalBenchmarkId = new BenchmarkId(
-            groupId, functionId, measurementsReconstructed,
-        );
-        generatePlotsAndReport(measurementsReconstructed, internalBenchmarkId.title, path.join(outputDir, internalBenchmarkId.directoryName));
-        benchmarks.push(internalBenchmarkId);
     }
 
     benchmarks.sort((a, b) => a.fullId.localeCompare(b.fullId));
