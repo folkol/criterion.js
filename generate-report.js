@@ -10,63 +10,53 @@ import {GnuPlotter} from "./gnuplotter.js";
 function generatePlotsAndReport(benchmark, outputDir) {
     let {id, measurements, statistics} = benchmark;
     let title = benchmark.id.title;
-    let measurementsReconstructed = reconstructOldMeasurements(measurements, statistics);
     let outputDirectory = path.join(outputDir, id.directoryName)
 
     console.log('generating plots and report for', title);
     let reportDir = path.join(outputDirectory, "report");
     fs.mkdirSync(reportDir, {recursive: true});
 
-    let estimates = measurementsReconstructed.absoluteEstimates;
-    let distributions = measurementsReconstructed.distributions;
-
-    let typical_estimate =
-        estimates.slope ??
-        estimates.mean;
-
     let timeInterval = (est) => {
-        let {lowerBound, upperBound} = est.confidenceInterval;
         return {
-            lower: formatMeasurement(lowerBound),
-            point: formatMeasurement(est.pointEstimate),
-            upper: formatMeasurement(upperBound),
+            lower: formatMeasurement(est.lb),
+            point: formatMeasurement(est.point),
+            upper: formatMeasurement(est.ub),
         }
     };
     let r2Interval = (est) => {
-        let {lowerBound, upperBound} = est.confidenceInterval;
         let format = x => Slope.rSquared(x, data).toFixed(7);
         return {
-            lower: format(lowerBound),
-            point: format(est.pointEstimate),
-            upper: format(upperBound),
+            lower: format(est.lb),
+            point: format(est.point),
+            upper: format(est.ub),
         };
     };
 
-    let data = measurementsReconstructed.data;
+    let data = {xs: measurements.iters, ys: measurements.times};
 
-    GnuPlotter.pdfSmall(reportDir, measurementsReconstructed);
-    GnuPlotter.pdf(title, reportDir, measurementsReconstructed);
+    GnuPlotter.pdfSmall(reportDir, measurements.averages);
+    GnuPlotter.pdf(title, reportDir, measurements);
 
-    GnuPlotter.regressionSmall(reportDir, measurementsReconstructed);
-    GnuPlotter.regression(title, reportDir, measurementsReconstructed);
+    GnuPlotter.regressionSmall(reportDir, measurements, statistics);
+    GnuPlotter.regression(title, reportDir, measurements, statistics);
 
-    GnuPlotter.statistic(title, reportDir, 'Mean', 'mean.svg', distributions.mean, estimates.mean);
-    GnuPlotter.statistic(title, reportDir, 'Median', 'median.svg', distributions.median, estimates.median);
-    GnuPlotter.statistic(title, reportDir, 'Std. Dev.', 'stdDev.svg', distributions.stdDev, estimates.stdDev);
-    GnuPlotter.statistic(title, reportDir, 'MAD', 'mad.svg', distributions.medianAbsDev, estimates.medianAbsDev);
-    GnuPlotter.statistic(title, reportDir, 'Slope', 'slope.svg', distributions.slope, estimates.slope);
+    GnuPlotter.statistic(title, reportDir, 'Mean', 'mean.svg', statistics.mean.bootstrap, statistics.mean.estimates);
+    GnuPlotter.statistic(title, reportDir, 'Median', 'median.svg', statistics.median.bootstrap, statistics.median.estimates);
+    GnuPlotter.statistic(title, reportDir, 'Std. Dev.', 'stdDev.svg', statistics.stdDev.bootstrap, statistics.stdDev.estimates);
+    GnuPlotter.statistic(title, reportDir, 'MAD', 'mad.svg', statistics.medianAbsDev.bootstrap, statistics.medianAbsDev.estimates);
+    GnuPlotter.statistic(title, reportDir, 'Slope', 'slope.svg', statistics.slope.bootstrap, statistics.slope.estimates);
 
     let context = {
         title: title,
-        confidence: typical_estimate.confidenceInterval.confidenceLevel.toFixed(2),
+        confidence: statistics.slope.estimates.cl.toFixed(2),
 
         additionalStatistics: [
-            {name: "Mean", ...timeInterval(estimates.mean)},
-            {name: "Median", ...timeInterval(estimates.median)},
-            {name: "Std. Dev.", ...timeInterval(estimates.stdDev)},
-            {name: "Slope", ...timeInterval(estimates.slope)},
-            {name: "MAD", ...timeInterval(estimates.medianAbsDev)},
-            {name: "R²", ...r2Interval(typical_estimate)},
+            {name: "Mean", ...timeInterval(statistics.mean.estimates)},
+            {name: "Median", ...timeInterval(statistics.median.estimates)},
+            {name: "Std. Dev.", ...timeInterval(statistics.stdDev.estimates)},
+            {name: "Slope", ...timeInterval(statistics.slope.estimates)},
+            {name: "MAD", ...timeInterval(statistics.medianAbsDev.estimates)},
+            {name: "R²", ...r2Interval(statistics.slope.estimates)},
         ],
         additionalPlots: [
             {name: 'Mean', url: 'mean.svg'},
@@ -107,7 +97,7 @@ function generateGroupReport(group, outputDirectory) {
     let reportDir = path.join(outputDirectory, slugify(group.name), 'report');
     fs.mkdirSync(reportDir, {recursive: true})
 
-    GnuPlotter.violin(reportDir, group.functionAverages);
+    GnuPlotter.violin(reportDir, group.benchmarks);
 
     let context = {
         name: group.name,
@@ -117,36 +107,6 @@ function generateGroupReport(group, outputDirectory) {
     let report_path = path.join(reportDir, 'index.html');
     let report = renderTemplate('summary_report', context);
     fs.writeFileSync(report_path, report)
-}
-
-function reconstructOldMeasurements(measurements, statistics) {
-    return {
-        data: {
-            xs: measurements.iters,
-            ys: measurements.times,
-        },
-        avgTimes: {
-            fences: measurements.tukey,
-            sample: {
-                numbers: measurements.averages,
-            }
-        },
-        absoluteEstimates: Object.fromEntries(Object.keys(statistics).map(statistic =>
-            [statistic, {
-                confidenceInterval: {
-                    confidenceLevel: statistics[statistic].estimates.cl,
-                    lowerBound: statistics[statistic].estimates.lb,
-                    upperBound: statistics[statistic].estimates.ub
-                },
-                standardError: statistics[statistic].estimates.se,
-                pointEstimate: statistics[statistic].estimates.point,
-            }])),
-        distributions: Object.fromEntries(Object.keys(statistics).map(statistic => [
-            statistic, {
-                numbers: statistics[statistic].bootstrap
-            }
-        ]))
-    };
 }
 
 function listBenchmarks(directory) {
@@ -285,20 +245,18 @@ function toPresentationGroup(group, outputDir) {
         functionAverages[benchmark.id.functionId] = benchmark.measurements.averages;
     }
 
-    let allCurves = Object.values(functionAverages);
-    let funcs = Object.keys(functionAverages);
     let benchmarks = Object.keys(functionAverages)
         .sort()
         .map((f) => ({
             name: f,
-            path: path.join(outputDir, slugify(groupId), slugify(f))
+            path: path.join(outputDir, slugify(groupId), slugify(f)),
+            averages: functionAverages[f]
         }));
 
     return {
         name: groupId,
         path: path.join(outputDir, slugify(groupId), "report", "index.html"),
-        functionAverages,
-        benchmarks
+        benchmarks,
     };
 }
 

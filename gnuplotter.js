@@ -6,12 +6,12 @@ import child_process from "node:child_process";
 export class GnuPlotter {
 
     static pdf(title, reportDir, measurements) {
-        let iterCounts = measurements.data.xs;
+        let iterCounts = measurements.iters;
         let maxIters = iterCounts.reduce((acc, x) => Math.max(acc, x));
         let exponent = 3 * Math.floor(Math.log10(maxIters) / 3);
 
-        let avg_times = measurements.avgTimes;
-        let scaled_numbers = [...avg_times.sample.numbers];
+        let avg_times = measurements.averages;
+        let scaled_numbers = [...avg_times];
         let typical = scaled_numbers.reduce((acc, x) => Math.max(acc, x));
         let unit = scaleValues(typical, scaled_numbers);
         let scaled_avg_times = new Sample(scaled_numbers);
@@ -61,8 +61,8 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
         let mildOutliers = [];
         let severeOutliers = [];
 
-        let [lost, lomt, himt, hist] = measurements.avgTimes.fences;
-        for (let [n, x, y] of avg_times.sample.numbers.map((x, i) => [
+        let [lost, lomt, himt, hist] = measurements.tukey;
+        for (let [n, x, y] of avg_times.map((x, i) => [
             x,
             scaled_avg_times.numbers[i],
             ys[i]
@@ -92,7 +92,7 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
         }
         script += "e\n";
 
-        let scaledFences = [...measurements.avgTimes.fences];
+        let scaledFences = [...measurements.tukey];
         scaleValues(typical, scaledFences)
         let [scaledLost, scaledLomt, scaledHimt, scaledHist] = scaledFences
 
@@ -115,9 +115,8 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
         GnuPlotter.doPlot(script);
     }
 
-    static pdfSmall(reportDir, measurements) {
-        let avg_times = measurements.avgTimes;
-        let scaled_numbers = [...avg_times.sample.numbers];
+    static pdfSmall(reportDir, avg_times) {
+        let scaled_numbers = [...avg_times];
         let typical = scaled_numbers.reduce((acc, x) => Math.max(acc, x));
         let unit = scaleValues(typical, scaled_numbers);
         let scaled_avg_times = new Sample(scaled_numbers);
@@ -157,21 +156,19 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
     }
 
 
-    static regressionSmall(reportDir, measurements) {
-        let slopeEstimate = measurements.absoluteEstimates.slope;
-        let slopeDist = measurements.distributions.slope;
+    static regressionSmall(reportDir, measurements, statistics) {
         let [lb, ub] = confidenceInterval(
-            new Sample(slopeDist.numbers).percentiles(),
-            slopeEstimate.confidenceInterval.confidenceLevel,
+            new Sample(statistics.slope.bootstrap).percentiles(),
+            statistics.slope.cl,
         );
-        let data = measurements.data;
+        let data = {xs: measurements.iters, ys: measurements.times};
         let [max_iters, typical] = [
             data.xs.reduce((acc, x) => Math.max(acc, x)),
             data.ys.reduce((acc, y) => Math.max(acc, y))
         ];
         let scaled_numbers = [...data.ys];
         let unit = scaleValues(typical, scaled_numbers);
-        let point_estimate = Slope.fit(measurements.data);
+        let point_estimate = Slope.fit(data);
         let scaled_points = [
             point_estimate * max_iters,
             lb * max_iters,
@@ -221,21 +218,21 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
     }
 
 
-    static regression(title, reportDir, measurements) {
-        let slopeEstimate = measurements.absoluteEstimates.slope;
-        let slopeDist = measurements.distributions.slope;
+    static regression(title, reportDir, measurements, statistics) {
+        // let slopeEstimate = measurements.absoluteEstimates.slope;
+        // let slopeDist = measurements.distributions.slope;
         let [lb, ub] = confidenceInterval(
-            new Sample(slopeDist.numbers).percentiles(),
-            slopeEstimate.confidenceInterval.confidenceLevel,
+            new Sample(statistics.slope.bootstrap).percentiles(),
+            statistics.slope.cl,
         );
-        let data = measurements.data;
+        let data = {xs: measurements.iters, ys: measurements.times};
         let [max_iters, typical] = [
             data.xs.reduce((acc, x) => Math.max(acc, x)),
             data.ys.reduce((acc, y) => Math.max(acc, y))
         ];
         let scaled_numbers = [...data.ys];
         let unit = scaleValues(typical, scaled_numbers);
-        let point_estimate = Slope.fit(measurements.data);
+        let point_estimate = Slope.fit(data);
         let scaled_points = [
             point_estimate * max_iters,
             lb * max_iters,
@@ -287,17 +284,16 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
 
     function
 
-    static statistic(title, reportDir, statistic, filename, distribution, estimate) {
-        let ci = estimate.confidenceInterval;
-        let typical = ci.upperBound;
-        let ci_values = [ci.lowerBound, ci.upperBound, estimate.pointEstimate];
+    static statistic(title, reportDir, statistic, filename, distribution, estimates) {
+        let typical = estimates.ub;
+        let ci_values = [estimates.lb, estimates.ub, estimates.point];
 
         let unit = scaleValues(typical, ci_values);
         let [lb, ub, point] = [ci_values[0], ci_values[1], ci_values[2]];
 
         let start = lb - (ub - lb) / 9.;
         let end = ub + (ub - lb) / 9.;
-        let scaled_xs = [...distribution.numbers];
+        let scaled_xs = [...distribution];
         scaleValues(typical, scaled_xs);
         let scaled_xs_sample = new Sample(scaled_xs);
 
@@ -361,10 +357,9 @@ plot '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Bootstrap distri
         GnuPlotter.doPlot(script);
     }
 
-    static violin(reportDir, functionAverages) {
-        let funcs = Object.keys(functionAverages);
-        let numbers = Object.values(functionAverages);
-        let allCurves = numbers.map(x => new Sample(x))
+    static violin(reportDir, benchmarks) {
+        let funcs = benchmarks.map(b => b.name);
+        let allCurves = benchmarks.map(b => new Sample(b.averages));
         let kdes = allCurves.map(avgTimes => {
             let [xs, ys] = sweepAndEstimate(avgTimes, null, avgTimes[0]);
             let yMax = ys.reduce((acc, y) => Math.max(acc, y));
