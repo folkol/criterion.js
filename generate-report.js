@@ -135,11 +135,15 @@ function loadBenchmark(benchmarkFile) {
 
 class Benchmark {
     constructor(groupId, functionId, measurements, statistics) {
-        let benchmarkId = new BenchmarkId(groupId, functionId);
-        this.groupId = benchmarkId.groupId;
-        this.functionId = benchmarkId.functionId;
-        this.title = benchmarkId.title;
-        this.directoryName = benchmarkId.directoryName;
+        if (typeof groupId !== 'string') {
+            throw new Error(`expected \`groupId\` to be 'string', was '${typeof groupId}'`);
+        }
+        if (typeof functionId !== 'string') {
+            throw new Error(`expected \`functionId\` to be 'string', was '${typeof functionId}'`);
+        }
+
+        this.title = `${groupId}/${functionId}`;
+        this.directoryName = `${slugify(groupId)}/${slugify(functionId)}`;
 
         let {iters, times, averages, tukey} = measurements;
         if (!isNumericArray(iters)) {
