@@ -45,13 +45,14 @@ export function slugify(s) {
 }
 
 export class BenchmarkId {
-    constructor(groupId, functionId, measurements) {
+    constructor(groupId, functionId, measurements, statistics) {
         this.groupId = groupId;
         this.functionId = functionId;
         this.fullId = `${groupId}/${functionId}`;
         this.title = this.fullId;
         this.directoryName = `${slugify(groupId)}/${slugify(functionId)}`;
         this.measurements = measurements;
+        this.statistics = statistics;
     }
 }
 

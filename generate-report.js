@@ -1,23 +1,27 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import {BenchmarkId, slugify} from "./index.js";
+import {slugify} from "./index.js";
 import {renderTemplate} from "./templates.js";
 import {Slope} from "./analysis.js";
 import {formatMeasurement, JsonReport} from "./report.js";
 import {GnuPlotter} from "./gnuplotter.js";
 
 function generatePlotsAndReport(
-    measurements,
-    title,
-    outputDirectory,
+    benchmark,
+    outputDir,
 ) {
+    let {groupId, functionId, measurements, statistics} = benchmark;
+    let title = `${benchmark.groupId}/${benchmark.functionId}`;
+    let measurementsReconstructed = reconstructOldMeasurements(measurements, statistics);
+    let outputDirectory = path.join(outputDir, slugify(groupId), slugify(functionId))
+
     console.log('generating plots and report for', title);
     let reportDir = path.join(outputDirectory, "report");
     fs.mkdirSync(reportDir, {recursive: true});
 
-    let estimates = measurements.absoluteEstimates;
-    let distributions = measurements.distributions;
+    let estimates = measurementsReconstructed.absoluteEstimates;
+    let distributions = measurementsReconstructed.distributions;
 
     let typical_estimate =
         estimates.slope ??
@@ -41,13 +45,13 @@ function generatePlotsAndReport(
         };
     };
 
-    let data = measurements.data;
+    let data = measurementsReconstructed.data;
 
-    GnuPlotter.pdfSmall(reportDir, measurements);
-    GnuPlotter.pdf(title, reportDir, measurements);
+    GnuPlotter.pdfSmall(reportDir, measurementsReconstructed);
+    GnuPlotter.pdf(title, reportDir, measurementsReconstructed);
 
-    GnuPlotter.regressionSmall(reportDir, measurements);
-    GnuPlotter.regression(title, reportDir, measurements);
+    GnuPlotter.regressionSmall(reportDir, measurementsReconstructed);
+    GnuPlotter.regression(title, reportDir, measurementsReconstructed);
 
     GnuPlotter.statistic(title, reportDir, 'Mean', 'mean.svg', distributions.mean, estimates.mean);
     GnuPlotter.statistic(title, reportDir, 'Median', 'median.svg', distributions.median, estimates.median);
@@ -121,7 +125,7 @@ function generateGroupReport(group, outputDirectory) {
     fs.writeFileSync(report_path, report)
 }
 
-function reconstructMeasurements(measurements, statistics) {
+function reconstructOldMeasurements(measurements, statistics) {
     return {
         data: {
             xs: measurements.iters,
@@ -242,26 +246,25 @@ function loadBenchmark(benchmarkFile) {
     };
 }
 
-function loadBenchmarksAndGenerateReports(outputDir) {
-    let benchmarkFiles = listBenchmarks(outputDir);
-
-    console.log(`Found ${benchmarkFiles.length} benchmark files.`);
-
-    let benchmarks = [];
-    for (let benchmarkFile of benchmarkFiles) {
-        let benchmark = loadBenchmark(benchmarkFile);
-        if (benchmark) {
-            let {groupId, functionId, measurements, statistics} = benchmark;
-            let measurementsReconstructed = reconstructMeasurements(measurements, statistics);
-            let internalBenchmarkId = new BenchmarkId(groupId, functionId, measurementsReconstructed);
-            generatePlotsAndReport(measurementsReconstructed, internalBenchmarkId.title, path.join(outputDir, internalBenchmarkId.directoryName));
-            benchmarks.push(internalBenchmarkId);
-        }
+class Benchmark {
+    constructor(id, measurements, statistics) {
+        this.id = id;
+        this.measurements = measurements;
+        this.statistics = statistics;
     }
+}
 
-    benchmarks.sort((a, b) => a.fullId.localeCompare(b.fullId));
+function loadBenchmarks(outputDir) {
+    return listBenchmarks(outputDir)
+        .map(loadBenchmark)
+        .filter(x => x)
+        .sort((a, b) => `${a.groupId}/${a.functionId}`.localeCompare(`${b.groupId}/${b.functionId}`));
+}
 
-    return benchmarks;
+function generateBenchmarkReports(benchmarks, outputDir) {
+    for (let benchmark of benchmarks) {
+        generatePlotsAndReport(benchmark, outputDir);
+    }
 }
 
 /**
@@ -303,6 +306,8 @@ function outputDirOrDie() {
 }
 
 function toPresentationGroup(group, outputDir) {
+
+
     let groupId = group[0].groupId;
 
     let functionIds = [];
@@ -310,7 +315,7 @@ function toPresentationGroup(group, outputDir) {
     for (let benchmark of group) {
         let functionId = benchmark.functionId;
         functionIds.push(functionId);
-        measurements[functionId] = benchmark.measurements;
+        measurements[functionId] = reconstructOldMeasurements(benchmark.measurements, benchmark.statistics);
     }
 
     let benchmarks = Array.from(new Set(functionIds))
@@ -334,7 +339,9 @@ function toPresentationGroup(group, outputDir) {
 async function main() {
     let outputDir = outputDirOrDie();
 
-    let benchmarks = loadBenchmarksAndGenerateReports(outputDir);
+    let benchmarks = loadBenchmarks(outputDir);
+    generateBenchmarkReports(benchmarks, outputDir);
+
     let benchmarksByGroupId = {};
     for (let benchmark of benchmarks) {
         (benchmarksByGroupId[benchmark.groupId] ??= []).push(benchmark)
