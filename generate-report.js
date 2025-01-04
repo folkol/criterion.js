@@ -23,15 +23,15 @@ function generateBenchmarkReport(benchmark, outputDirectory) {
     };
     let r2Interval = (est) => {
         let {lb, point, ub} = est.estimates;
-        let format = x => Slope.rSquared(x, data).toFixed(7);
+        let xs = benchmark.measurements.iters;
+        let ys = benchmark.measurements.times;
+        let format = x => Slope.rSquared(x, xs, ys).toFixed(7);
         return {
             lower: format(lb),
             point: format(point),
             upper: format(ub),
         };
     };
-
-    let data = {xs: benchmark.measurements.iters, ys: benchmark.measurements.times};
 
     GnuPlotter.pdfSmall(reportDir, benchmark.measurements.averages);
     GnuPlotter.pdf(benchmark.title, reportDir, benchmark.measurements);
@@ -64,7 +64,6 @@ function generateBenchmarkReport(benchmark, outputDirectory) {
             {name: 'MAD', url: 'mad.svg'},
             {name: 'Slope', url: 'slope.svg'}
         ],
-        comparison: null,
     };
 
     writeReport(reportDir, "benchmark", context)

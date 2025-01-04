@@ -165,14 +165,14 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
             new Sample(statistics.slope.bootstrap).percentiles(),
             statistics.slope.cl,
         );
-        let data = {xs: measurements.iters, ys: measurements.times};
+        let {xs, ys} = {xs: measurements.iters, ys: measurements.times};
         let [max_iters, typical] = [
-            data.xs.reduce((acc, x) => Math.max(acc, x)),
-            data.ys.reduce((acc, y) => Math.max(acc, y))
+            xs.reduce((acc, x) => Math.max(acc, x)),
+            ys.reduce((acc, y) => Math.max(acc, y))
         ];
-        let scaled_numbers = [...data.ys];
+        let scaled_numbers = [...ys];
         let unit = scaleValues(typical, scaled_numbers);
-        let point_estimate = Slope.fit(data);
+        let point_estimate = Slope.fit(xs, ys);
         let scaled_points = [
             point_estimate * max_iters,
             lb * max_iters,
@@ -202,7 +202,7 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
      '-' using 1:2:3 with filledcurves fillstyle solid 0.25 noborder lc rgb '#1f78b4' title 'Confidence interval'
 `;
 
-        for (let [x, y] of data.xs.map((x, i) => [
+        for (let [x, y] of xs.map((x, i) => [
             x * x_scale,
             scaled_numbers[i],
         ])) {
@@ -227,14 +227,14 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
             new Sample(statistics.slope.bootstrap).percentiles(),
             statistics.slope.cl,
         );
-        let data = {xs: measurements.iters, ys: measurements.times};
+        let {xs, ys} = {xs: measurements.iters, ys: measurements.times};
         let [max_iters, typical] = [
-            data.xs.reduce((acc, x) => Math.max(acc, x)),
-            data.ys.reduce((acc, y) => Math.max(acc, y))
+            xs.reduce((acc, x) => Math.max(acc, x)),
+            ys.reduce((acc, y) => Math.max(acc, y))
         ];
-        let scaled_numbers = [...data.ys];
+        let scaled_numbers = [...ys];
         let unit = scaleValues(typical, scaled_numbers);
-        let point_estimate = Slope.fit(data);
+        let point_estimate = Slope.fit(xs, ys);
         let scaled_points = [
             point_estimate * max_iters,
             lb * max_iters,
@@ -265,7 +265,7 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
      '-' using 1:2:3 with filledcurves fillstyle solid 0.25 noborder lc rgb '#1f78b4' title 'Confidence interval'
 `;
 
-        for (let [x, y] of data.xs.map((x, i) => [
+        for (let [x, y] of xs.map((x, i) => [
             x * x_scale,
             scaled_numbers[i],
         ])) {

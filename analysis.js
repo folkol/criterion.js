@@ -57,8 +57,8 @@ function dot(xs, ys) {
 
 function regression(data, config) {
     let cl = config.confidenceLevel;
-    let distribution = data.bootstrap(config.nResamples, (d) => Slope.fit(d));
-    let point = Slope.fit(data);
+    let distribution = data.bootstrap(config.nResamples, (d) => Slope.fit(d.xs, d.ys));
+    let point = Slope.fit(data.xs, data.ys);
     let [lb, ub] = distribution.confidenceInterval(config.confidenceLevel);
     let se = distribution.stdDev();
     return [
@@ -263,25 +263,20 @@ class Estimates {
 }
 
 export class Slope {
-    static fit(data) {
-        let xs = data.xs;
-        let ys = data.ys;
+    static fit(xs, ys) {
         let xy = dot(xs, ys);
         let x2 = dot(xs, xs);
         return xy / x2;
     }
 
-    static rSquared(m, data) {
-        let xs = data.xs;
-        let ys = data.ys;
-
+    static rSquared(m, xs, ys) {
         let n = xs.length;
         let y_bar = ys.reduce((acc, x) => acc + x) / n;
 
         let ss_res = 0;
         let ss_tot = 0;
 
-        for (let [x, y] of data.xs.map((x, i) => [x, ys[i]])) {
+        for (let [x, y] of xs.map((x, i) => [x, ys[i]])) {
             ss_res = ss_res + (y - m * x) ** 2;
             ss_tot = ss_res + (y - y_bar) ** 2;
         }

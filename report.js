@@ -139,17 +139,19 @@ export class CliReport extends Report {
             return `[${lb} ${ub}]`;
         }
 
-        let data = {xs: reportData.measurements.iters, ys: reportData.measurements.times};
-
         if (slopeEstimate) {
             let slop = formatShortEstimate(slopeEstimate);
+            let xs = reportData.measurements.iters;
+            let ys = reportData.measurements.times;
             let lb = Slope.rSquared(
                 slopeEstimate.lb,
-                data,
+                xs,
+                ys,
             ).toFixed(7);
             let ub = Slope.rSquared(
                 slopeEstimate.ub,
-                data,
+                xs,
+                ys,
             ).toFixed(7);
             console.log(`slope  ${slop}`, `R^2            [${lb} ${ub}]`);
         }
