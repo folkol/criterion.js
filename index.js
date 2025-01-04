@@ -46,6 +46,15 @@ export function slugify(s) {
 
 export class BenchmarkId {
     constructor(groupId, functionId, measurements, statistics) {
+        if (typeof groupId !== 'string') {
+            throw new Error(`expected \`groupId\` to be 'string', was '${typeof groupId}'`);
+        }
+        if (typeof functionId !== 'string') {
+            throw new Error(`expected \`functionId\` to be 'string', was '${typeof functionId}'`);
+        }
+
+        // TODO: remove measurements and statistics
+
         this.groupId = groupId;
         this.functionId = functionId;
         this.fullId = `${groupId}/${functionId}`;
@@ -338,7 +347,7 @@ let groupNameStack = [];
  * Uses a default-configured Criterion instance.
  *
  * See examples/jasminesque.js.
-  */
+ */
 export function group(name, cb) {
     groupNameStack.push(name)
     currentGroup = defaultCriterion.group(groupNameStack.join('_'))

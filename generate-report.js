@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import {slugify} from "./index.js";
+import {BenchmarkId, slugify} from "./index.js";
 import {renderTemplate} from "./templates.js";
 import {Slope} from "./analysis.js";
 import {formatMeasurement, JsonReport} from "./report.js";
@@ -11,10 +11,10 @@ function generatePlotsAndReport(
     benchmark,
     outputDir,
 ) {
-    let {groupId, functionId, measurements, statistics} = benchmark;
-    let title = `${benchmark.groupId}/${benchmark.functionId}`;
+    let {id, measurements, statistics} = benchmark;
+    let title = benchmark.id.title;
     let measurementsReconstructed = reconstructOldMeasurements(measurements, statistics);
-    let outputDirectory = path.join(outputDir, slugify(groupId), slugify(functionId))
+    let outputDirectory = path.join(outputDir, id.directoryName)
 
     console.log('generating plots and report for', title);
     let reportDir = path.join(outputDirectory, "report");
@@ -197,58 +197,42 @@ function loadBenchmark(benchmarkFile) {
         return;
     }
 
-    if (typeof groupId !== 'string') {
-        console.error('[WARN] expected `groupId` to be a string, was', typeof groupId, 'skipping:', benchmarkFile);
-        return;
+    try {
+        return new Benchmark(groupId, functionId, measurements, statistics);
+    } catch (error) {
+        console.error(`[WARN] skipping:`, benchmarkFile, error);
     }
-
-    if (typeof functionId !== 'string') {
-        console.error('[WARN] expected `functionId` to be a string, was', typeof groupId, 'skipping:', benchmarkFile);
-        return;
-    }
-
-    let {iters, times, averages, tukey} = measurements;
-    if (!isNumericArray(iters)) {
-        console.error('[WARN] unexpected `measurements.iters`, skipping:', benchmarkFile)
-        return;
-    }
-    if (!isNumericArray(times, iters.length)) {
-        console.error('[WARN] unexpected `measurements.times`, skipping:', benchmarkFile)
-        return;
-    }
-    if (!isNumericArray(averages, iters.length)) {
-        console.error('[WARN] unexpected `measurements.averages`, skipping:', benchmarkFile)
-        return;
-    }
-    if (!isNumericArray(tukey, 4)) {
-        console.error('[WARN] unexpected `measurements.tukey`, skipping:', benchmarkFile)
-        return;
-    }
-
-    let entries = Object.entries(statistics);
-    let knownStatistics = ['mean', 'median', 'medianAbsDev', 'slope', 'stdDev'];
-    if (entries.length !== 5 || !knownStatistics.every(k => knownStatistics.includes(k))) {
-        console.error(`[WARN] unexpected \`statistics\`, skipping:`, benchmarkFile)
-        return;
-    }
-    for (let [k, v] of entries) {
-        if (!knownStatistics.includes(k) || !isStatisticsObject(v)) {
-            console.error(`[WARN] unexpected \`statistics.${k}\`, skipping:`, benchmarkFile)
-            return;
-        }
-    }
-
-    return {
-        groupId,
-        functionId,
-        measurements: {iters, times, averages, tukey},
-        statistics,
-    };
 }
 
 class Benchmark {
-    constructor(id, measurements, statistics) {
-        this.id = id;
+    constructor(groupId, functionId, measurements, statistics) {
+        this.id = new BenchmarkId(groupId, functionId)
+
+        let {iters, times, averages, tukey} = measurements;
+        if (!isNumericArray(iters)) {
+            throw new Error('expected `measurements.iters` to be a numeric array');
+        }
+        if (!isNumericArray(times, iters.length)) {
+            throw new Error('expected `measurements.times` to be a numeric array');
+        }
+        if (!isNumericArray(averages, iters.length)) {
+            throw new Error('expected `measurements.averages` to be a numeric array');
+        }
+        if (!isNumericArray(tukey, 4)) {
+            throw new Error('expected `measurements.tukey` to be a numeric array');
+        }
+
+        let entries = Object.entries(statistics);
+        let knownStatistics = ['mean', 'median', 'medianAbsDev', 'slope', 'stdDev'];
+        if (entries.length !== 5 || !knownStatistics.every(k => knownStatistics.includes(k))) {
+            throw new Error('unexpected \`statistics\`')
+        }
+        for (let [k, v] of entries) {
+            if (!knownStatistics.includes(k) || !isStatisticsObject(v)) {
+                throw new Error(`unexpected \`statistics.${k}\``)
+            }
+        }
+
         this.measurements = measurements;
         this.statistics = statistics;
     }
@@ -308,12 +292,12 @@ function outputDirOrDie() {
 function toPresentationGroup(group, outputDir) {
 
 
-    let groupId = group[0].groupId;
+    let groupId = group[0].id.groupId;
 
     let functionIds = [];
     let measurements = {};
     for (let benchmark of group) {
-        let functionId = benchmark.functionId;
+        let functionId = benchmark.id.functionId;
         functionIds.push(functionId);
         measurements[functionId] = reconstructOldMeasurements(benchmark.measurements, benchmark.statistics);
     }
