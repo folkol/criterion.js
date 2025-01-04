@@ -1,23 +1,23 @@
 import {ReportData} from "./models.js";
 
-function tukey(sample) {
+export function tukey(xs) {
+    let sample = new Sample(xs);
     let [q1, _, q3] = sample.percentiles().quartiles();
     let iqr = q3 - q1;
     let k_m = 1.5;
     let k_s = 3;
 
-    return {
-        fences: [
-            q1 - k_s * iqr,
-            q1 - k_m * iqr,
-            q3 + k_m * iqr,
-            q3 + k_s * iqr,
-        ],
-        sample,
-    };
+    return [
+        q1 - k_s * iqr,
+        q1 - k_m * iqr,
+        q3 + k_m * iqr,
+        q3 + k_s * iqr,
+    ];
 }
 
-function calculateEstimates(sample, config) {
+export function calculateEstimates(xs, config) {
+    let sample = new Sample(xs);
+
     function stats(sample) {
         let mean = sample.mean();
         let stdDev = sample.stdDev(mean);
@@ -53,11 +53,11 @@ function calculateEstimates(sample, config) {
     return [distributions, Estimates.build(distributions, points, cl)];
 }
 
-function dot(xs, ys) {
+export function dot(xs, ys) {
     return xs.map((x, i) => [x, ys[i]]).reduce((acc, [x, y]) => acc + x * y, 0);
 }
 
-function regression(data, config) {
+export function regression(data, config) {
     let cl = config.confidenceLevel;
     let distribution = data.bootstrap(config.nResamples, (d) => Slope.fit(d.xs, d.ys));
     let point = Slope.fit(data.xs, data.ys);
@@ -181,7 +181,7 @@ export class Sample {
     }
 }
 
-class Data {
+export class Data {
     constructor(xs, ys) {
         if (
             xs.length !== ys.length ||
@@ -227,7 +227,7 @@ class ConfidenceInterval {
     }
 }
 
-class Estimate {
+export class Estimate {
     constructor(confidenceInterval, pointEstimate, standardError) {
         this.confidenceInterval = confidenceInterval;
         this.pointEstimate = pointEstimate;
@@ -244,7 +244,7 @@ class Estimate {
     }
 }
 
-class Estimates {
+export class Estimates {
     constructor(mean, median, medianAbsDev, slope, stdDev) {
         this.mean = mean;
         this.median = median;
@@ -315,12 +315,11 @@ export async function common(
     }
 
     let timeAverages = iters.map((n, i) => times[i] / n);
-    let avgTimes = new Sample(timeAverages);
 
     let data = new Data(iters, times);
-    let labeledSample = tukey(avgTimes);
+    let fences = tukey(timeAverages);
 
-    let [distributions, estimates] = calculateEstimates(avgTimes, config);
+    let [distributions, estimates] = calculateEstimates(timeAverages, config);
 
     let [distribution, slope] = regression(data, config);
     estimates.slope = slope;
@@ -330,8 +329,8 @@ export async function common(
         id,
         iters,
         times,
-        labeledSample.sample.numbers,
-        labeledSample.fences,
+        timeAverages,
+        fences,
         estimates,
         distributions
     );
