@@ -212,10 +212,11 @@ export class JsonReport extends Report {
     }
 
     measurementComplete(id, context, reportData) {
-        let version = JsonReport.VERSION;
         let where = path.join(context.outputDirectory, id.directoryName);
         fs.mkdirSync(where, {recursive: true});
         let filePath = path.join(where, "benchmark.json");
+
+        let version = JsonReport.VERSION;
         fs.writeFileSync(filePath, JSON.stringify({version, ...reportData}));
     }
 }

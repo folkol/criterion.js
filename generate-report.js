@@ -67,9 +67,7 @@ function generatePlotsAndReport(benchmark, outputDirectory) {
         comparison: null,
     };
 
-    let report_path = path.join(reportDir, "index.html");
-    let output = renderTemplate("benchmark_report", context);
-    fs.writeFileSync(report_path, output);
+    writeReport(reportDir, "benchmark_report", context)
 }
 
 function generateGroupReport(group, outputDirectory) {
@@ -83,9 +81,7 @@ function generateGroupReport(group, outputDirectory) {
         benchmarks: group.benchmarks // name + path
     };
 
-    let report_path = path.join(reportDir, 'index.html');
-    let report = renderTemplate('summary_report', context);
-    fs.writeFileSync(report_path, report)
+    writeReport(reportDir, 'summary_report', context)
 }
 
 function listBenchmarks(directory) {
@@ -133,7 +129,7 @@ function loadBenchmark(benchmarkFile) {
     try {
         return new Benchmark(groupId, functionId, measurements, statistics);
     } catch (error) {
-        console.error(`[WARN] couldn't create Benchmark instance, skipping:`, benchmarkFile, error);
+        console.error(`[WARN] couldn't create Benchmark instance, skipping: ${benchmarkFile} (${error.message})`);
     }
 }
 
@@ -174,29 +170,31 @@ class Benchmark {
 function loadBenchmarks(outputDir) {
     return listBenchmarks(outputDir)
         .map(loadBenchmark)
-        .filter(x => x)
+        .filter(benchmark => benchmark)
         .sort((a, b) => a.id.fullId.localeCompare(b.id.fullId));
+}
+
+function writeReport(reportDir, template, context) {
+    fs.mkdirSync(reportDir, {recursive: true});
+    let reportPath = path.join(reportDir, "index.html");
+    let report = renderTemplate(template, context);
+    fs.writeFileSync(reportPath, report);
 }
 
 function writeFinalReport(outputDir, groups) {
     let reportDir = path.join(outputDir, "report");
-    fs.mkdirSync(reportDir, {recursive: true});
-
-    let reportPath = path.join(reportDir, "index.html");
-    let report = renderTemplate("index", {groups});
-
-    fs.writeFileSync(reportPath, report);
-
-    console.log("Wrote", reportPath);
+    writeReport(reportDir, "index", {groups});
+    console.log(`Wrote: ${reportDir}/index.html`);
 }
 
 function outputDirOrDie() {
     // TODO: add some marker file to confirm that this is a criterion dir?
-    if (process.argv.length !== 3 || !fs.existsSync(process.argv[2])) {
+    let maybeCriterionDir = process.argv[2];
+    if (process.argv.length !== 3 || !fs.existsSync(maybeCriterionDir)) {
         console.error("usage: npx criterion-report path_to_criterion_folder");
         process.exit(1);
     }
-    return process.argv[2];
+    return maybeCriterionDir;
 }
 
 function toPresentationGroup(group, outputDir) {

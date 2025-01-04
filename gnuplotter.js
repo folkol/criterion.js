@@ -224,8 +224,6 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
 
 
     static regression(title, reportDir, measurements, statistics) {
-        // let slopeEstimate = measurements.absoluteEstimates.slope;
-        // let slopeDist = measurements.distributions.slope;
         let [lb, ub] = confidenceInterval(
             new Sample(statistics.slope.bootstrap).percentiles(),
             statistics.slope.cl,
