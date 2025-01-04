@@ -59,15 +59,6 @@ function generatePlotsAndReport(
     GnuPlotter.statistic(title, reportDir, 'MAD', 'mad.svg', distributions.medianAbsDev, estimates.medianAbsDev);
     GnuPlotter.statistic(title, reportDir, 'Slope', 'slope.svg', distributions.slope, estimates.slope);
 
-    let additional_plots = [
-        {url: 'mean.svg', name: 'Mean'},
-        {url: 'median.svg', name: 'Median'},
-        {url: 'stdDev.svg', name: 'Std. Dev.'},
-        {url: 'mad.svg', name: 'MAD'},
-        {url: 'slope.svg', name: 'Slope'}
-        // new Plot("Typical", "typical.svg"),
-    ];
-
     let context = {
         title: title,
         confidence: typical_estimate.confidenceInterval.confidenceLevel.toFixed(2),
@@ -80,7 +71,14 @@ function generatePlotsAndReport(
             {name: "MAD", ...time_interval(estimates.medianAbsDev)},
             {name: "R²", ...r2_interval(typical_estimate)},
         ],
-        additional_plots,
+        additional_plots: [
+            {url: 'mean.svg', name: 'Mean'},
+            {url: 'median.svg', name: 'Median'},
+            {url: 'stdDev.svg', name: 'Std. Dev.'},
+            {url: 'mad.svg', name: 'MAD'},
+            {url: 'slope.svg', name: 'Slope'}
+            // new Plot("Typical", "typical.svg"),
+        ],
         comparison: null,
     };
 
@@ -245,12 +243,6 @@ function loadBenchmarks(outputDir) {
         .sort((a, b) => `${a.groupId}/${a.functionId}`.localeCompare(`${b.groupId}/${b.functionId}`));
 }
 
-function generateBenchmarkReports(benchmarks, outputDir) {
-    for (let benchmark of benchmarks) {
-        generatePlotsAndReport(benchmark, outputDir);
-    }
-}
-
 /**
  * @typedef {Object} Benchmark
  * @property {string} name
@@ -320,21 +312,26 @@ function toPresentationGroup(group, outputDir) {
     };
 }
 
-async function main() {
-    let outputDir = outputDirOrDie();
-
-    let benchmarks = loadBenchmarks(outputDir);
-    generateBenchmarkReports(benchmarks, outputDir);
-
+function createPresentationGroups(benchmarks, outputDir) {
     let benchmarksByGroupId = {};
     for (let benchmark of benchmarks) {
         (benchmarksByGroupId[benchmark.groupId] ??= []).push(benchmark)
     }
 
-    let groups = Object.values(benchmarksByGroupId)
+    return Object.values(benchmarksByGroupId)
         .map(group => toPresentationGroup(group, outputDir))
         .sort((a, b) => a.name.localeCompare(b.name));
+}
 
+async function main() {
+    let outputDir = outputDirOrDie();
+
+    let benchmarks = loadBenchmarks(outputDir);
+    for (let benchmark of benchmarks) {
+        generatePlotsAndReport(benchmark, outputDir);
+    }
+
+    let groups = createPresentationGroups(benchmarks, outputDir);
     for (let group of groups) {
         generateGroupReport(group, outputDir);
     }

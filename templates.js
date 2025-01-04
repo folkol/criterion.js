@@ -1,8 +1,8 @@
 import Handlebars from "handlebars";
 
-export function renderTemplate(templateName, data) {
+export function renderTemplate(templateName, context) {
     const template = Handlebars.compile(templates[templateName]);
-    return template(data);
+    return template(context);
 }
 
 let templates = {
