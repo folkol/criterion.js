@@ -7,10 +7,7 @@ import {Slope} from "./analysis.js";
 import {formatMeasurement, JsonReport} from "./report.js";
 import {GnuPlotter} from "./gnuplotter.js";
 
-function generatePlotsAndReport(
-    benchmark,
-    outputDir,
-) {
+function generatePlotsAndReport(benchmark, outputDir) {
     let {id, measurements, statistics} = benchmark;
     let title = benchmark.id.title;
     let measurementsReconstructed = reconstructOldMeasurements(measurements, statistics);
@@ -27,7 +24,7 @@ function generatePlotsAndReport(
         estimates.slope ??
         estimates.mean;
 
-    let time_interval = (est) => {
+    let timeInterval = (est) => {
         let {lowerBound, upperBound} = est.confidenceInterval;
         return {
             lower: formatMeasurement(lowerBound),
@@ -35,7 +32,7 @@ function generatePlotsAndReport(
             upper: formatMeasurement(upperBound),
         }
     };
-    let r2_interval = (est) => {
+    let r2Interval = (est) => {
         let {lowerBound, upperBound} = est.confidenceInterval;
         let format = x => Slope.rSquared(x, data).toFixed(7);
         return {
@@ -63,21 +60,20 @@ function generatePlotsAndReport(
         title: title,
         confidence: typical_estimate.confidenceInterval.confidenceLevel.toFixed(2),
 
-        additional_statistics: [
-            {name: "Mean", ...time_interval(estimates.mean)},
-            {name: "Median", ...time_interval(estimates.median)},
-            {name: "Std. Dev.", ...time_interval(estimates.stdDev)},
-            {name: "Slope", ...time_interval(estimates.slope)},
-            {name: "MAD", ...time_interval(estimates.medianAbsDev)},
-            {name: "R²", ...r2_interval(typical_estimate)},
+        additionalStatistics: [
+            {name: "Mean", ...timeInterval(estimates.mean)},
+            {name: "Median", ...timeInterval(estimates.median)},
+            {name: "Std. Dev.", ...timeInterval(estimates.stdDev)},
+            {name: "Slope", ...timeInterval(estimates.slope)},
+            {name: "MAD", ...timeInterval(estimates.medianAbsDev)},
+            {name: "R²", ...r2Interval(typical_estimate)},
         ],
-        additional_plots: [
-            {url: 'mean.svg', name: 'Mean'},
-            {url: 'median.svg', name: 'Median'},
-            {url: 'stdDev.svg', name: 'Std. Dev.'},
-            {url: 'mad.svg', name: 'MAD'},
-            {url: 'slope.svg', name: 'Slope'}
-            // new Plot("Typical", "typical.svg"),
+        additionalPlots: [
+            {name: 'Mean', url: 'mean.svg'},
+            {name: 'Median', url: 'median.svg'},
+            {name: 'Std. Dev.', url: 'stdDev.svg'},
+            {name: 'MAD', url: 'mad.svg'},
+            {name: 'Slope', url: 'slope.svg'}
         ],
         comparison: null,
     };

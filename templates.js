@@ -214,7 +214,7 @@ let templates = {
                             </tr>
                         </thead>
                         <tbody>
-                        {{#each additional_statistics}}
+                        {{#each additionalStatistics}}
                             <tr>
                                 <td>{{this.name}}</td>
                                 <td class="ci-bound">{{this.lower}}</td>
@@ -228,7 +228,7 @@ let templates = {
                 <div class="additional_plots">
                     <h4>Additional Plots:</h4>
                     <ul>
-                        {{#each additional_plots}}
+                        {{#each additionalPlots}}
                         <li>
                             <a href="{{this.url}}">{{this.name}}</a>
                         </li>
