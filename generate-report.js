@@ -196,7 +196,7 @@ function loadBenchmarks(outputDir) {
     return listBenchmarks(outputDir)
         .map(loadBenchmark)
         .filter(x => x)
-        .sort((a, b) => `${a.groupId}/${a.functionId}`.localeCompare(`${b.groupId}/${b.functionId}`));
+        .sort((a, b) => a.id.fullId.localeCompare(b.id.fullId));
 }
 
 /**
