@@ -119,7 +119,7 @@ export class ReportData {
         this.statistics = statistics;
     }
 
-    title() {
+    get title() {
         return `${this.groupId}/${this.functionId}`;
     }
 
