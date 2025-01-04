@@ -67,7 +67,7 @@ function generatePlotsAndReport(benchmark, outputDirectory) {
         comparison: null,
     };
 
-    writeReport(reportDir, "benchmark_report", context)
+    writeReport(reportDir, "benchmark", context)
 }
 
 function generateGroupReport(group, outputDirectory) {
@@ -81,7 +81,7 @@ function generateGroupReport(group, outputDirectory) {
         benchmarks: group.benchmarks // name + path
     };
 
-    writeReport(reportDir, 'summary_report', context)
+    writeReport(reportDir, 'group', context)
 }
 
 function listBenchmarks(directory) {

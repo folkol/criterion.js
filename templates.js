@@ -93,7 +93,7 @@ let templates = {
 </body>
 </html>`,
 
-    benchmark_report: `<!DOCTYPE html>
+    benchmark: `<!DOCTYPE html>
 <html>
 
 <head>
@@ -258,7 +258,7 @@ let templates = {
 
 </html>`,
 
-    summary_report: `<!DOCTYPE html>
+    group: `<!DOCTYPE html>
 <html>
 
 <head>
