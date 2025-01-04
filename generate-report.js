@@ -72,26 +72,6 @@ function generatePlotsAndReport(benchmark, outputDirectory) {
     fs.writeFileSync(report_path, output);
 }
 
-/**
- * @typedef {Object} Benchmark
- * @property {string} name
- * @property {string} path
- */
-
-/**
- * @typedef {Object} Group
- * @property {string} name
- * @property {string} path
- * @property {Benchmark[]} benchmarks
- * @property {string[]} funcs
- * @property {number[][]} allCurves
- */
-
-/**
- * Generates report for the given group.
- * @param {Group} group - The group object.
- * @param {string} outputDirectory - Where to write the report
- */
 function generateGroupReport(group, outputDirectory) {
     let reportDir = path.join(outputDirectory, slugify(group.name), 'report');
     fs.mkdirSync(reportDir, {recursive: true})
@@ -198,23 +178,6 @@ function loadBenchmarks(outputDir) {
         .sort((a, b) => a.id.fullId.localeCompare(b.id.fullId));
 }
 
-/**
- * @typedef {Object} Benchmark
- * @property {string} name
- * @property {string} path
- */
-
-/**
- * @typedef {Object} IndexGroup
- * @property {string} name
- * @property {string} path
- * @property {Benchmark[]} benchmarks
- */
-
-/**
- * @param {string} outputDir
- * @param {IndexGroup[]} groups
- */
 function writeFinalReport(outputDir, groups) {
     let reportDir = path.join(outputDir, "report");
     fs.mkdirSync(reportDir, {recursive: true});

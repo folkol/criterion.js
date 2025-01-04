@@ -3,6 +3,11 @@ import {Sample, Slope} from "./analysis.js";
 import path from "node:path";
 import child_process from "node:child_process";
 
+// https://gnuplot.sourceforge.net/docs_4.2/node75.html
+function gnuQuote(title) {
+    return title.replaceAll(/'/g, "''");
+}
+
 export class GnuPlotter {
 
     static pdf(title, reportDir, measurements) {
@@ -25,7 +30,7 @@ export class GnuPlotter {
         let max_y = ys.reduce((acc, y) => Math.max(acc, y)) * 1.1;
 
         let script = `set output '${figurePath}'
-set title '${title}'
+set title '${gnuQuote(title)}'
 set xtics nomirror
 set xlabel 'Average time (${unit})'
 set xrange [${min_x}:${max_x}]
@@ -248,7 +253,7 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
         let figurePath = path.join(reportDir, "regression.svg");
 
         let script = `set output '${figurePath}'
-set title '${title}'
+set title '${gnuQuote(title)}'
 set xtics nomirror 
 set xlabel '${x_label}'
 set grid xtics
@@ -326,7 +331,7 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
         let figurePath = path.join(reportDir, filename);
 
         let script = `set output '${figurePath}'
-set title '${title}: ${statistic}'
+set title '${gnuQuote(title)}: ${gnuQuote(statistic)}'
 set xtics nomirror
 set xlabel 'Average time (${unit})'
 set xrange [${xMin}:${xMax}]
