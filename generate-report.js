@@ -107,7 +107,7 @@ function generateGroupReport(group, outputDirectory) {
     let reportDir = path.join(outputDirectory, slugify(group.name), 'report');
     fs.mkdirSync(reportDir, {recursive: true})
 
-    GnuPlotter.violin(reportDir, group.funcs, group.allCurves);
+    GnuPlotter.violin(reportDir, group.functionAverages);
 
     let context = {
         name: group.name,
@@ -278,32 +278,26 @@ function outputDirOrDie() {
 }
 
 function toPresentationGroup(group, outputDir) {
-
-
     let groupId = group[0].id.groupId;
 
-    let functionIds = [];
-    let curvesById = {};
+    let functionAverages = {};
     for (let benchmark of group) {
-        let functionId = benchmark.id.functionId;
-        functionIds.push(functionId);
-        curvesById[functionId] = benchmark.measurements.averages;
+        functionAverages[benchmark.id.functionId] = benchmark.measurements.averages;
     }
 
-    let benchmarks = Array.from(new Set(functionIds))
+    let allCurves = Object.values(functionAverages);
+    let funcs = Object.keys(functionAverages);
+    let benchmarks = Object.keys(functionAverages)
         .sort()
         .map((f) => ({
             name: f,
             path: path.join(outputDir, slugify(groupId), slugify(f))
         }));
 
-    let allCurves = Object.values(curvesById);
-    let funcs = Object.keys(curvesById);
     return {
         name: groupId,
         path: path.join(outputDir, slugify(groupId), "report", "index.html"),
-        funcs,
-        allCurves,
+        functionAverages,
         benchmarks
     };
 }
@@ -311,7 +305,7 @@ function toPresentationGroup(group, outputDir) {
 function createPresentationGroups(benchmarks, outputDir) {
     let benchmarksByGroupId = {};
     for (let benchmark of benchmarks) {
-        (benchmarksByGroupId[benchmark.groupId] ??= []).push(benchmark)
+        (benchmarksByGroupId[benchmark.id.groupId] ??= []).push(benchmark)
     }
 
     return Object.values(benchmarksByGroupId)

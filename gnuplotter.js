@@ -361,7 +361,9 @@ plot '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Bootstrap distri
         GnuPlotter.doPlot(script);
     }
 
-    static violin(reportDir, funcs, numbers) {
+    static violin(reportDir, functionAverages) {
+        let funcs = Object.keys(functionAverages);
+        let numbers = Object.values(functionAverages);
         let allCurves = numbers.map(x => new Sample(x))
         let kdes = allCurves.map(avgTimes => {
             let [xs, ys] = sweepAndEstimate(avgTimes, null, avgTimes[0]);
