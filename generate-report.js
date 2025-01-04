@@ -7,13 +7,12 @@ import {Slope} from "./analysis.js";
 import {formatMeasurement, JsonReport} from "./report.js";
 import {GnuPlotter} from "./gnuplotter.js";
 
-function generatePlotsAndReport(benchmark, outputDir) {
-    let {id, measurements, statistics} = benchmark;
+function generatePlotsAndReport(benchmark, outputDirectory) {
+    let {measurements, statistics} = benchmark;
     let title = benchmark.id.title;
-    let outputDirectory = path.join(outputDir, id.directoryName)
 
     console.log('generating plots and report for', title);
-    let reportDir = path.join(outputDirectory, "report");
+    let reportDir = path.join(outputDirectory, benchmark.id.directoryName, "report");
     fs.mkdirSync(reportDir, {recursive: true});
 
     let timeInterval = (est) => {
