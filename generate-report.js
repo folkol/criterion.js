@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import {BenchmarkId, slugify} from "./index.js";
+import {slugify} from "./index.js";
 import {renderTemplate} from "./templates.js";
 import {Slope} from "./analysis.js";
 import {formatMeasurement, JsonReport} from "./report.js";
 import {GnuPlotter} from "./gnuplotter.js";
+import {Benchmark} from "./models.js";
 
 function generateBenchmarkReport(benchmark, outputDirectory) {
     console.log('generating plots and report for', benchmark.title);
@@ -103,19 +104,10 @@ function listBenchmarks(directory) {
     return benchmarks;
 }
 
-function isNumericArray(xs, l) {
-    let expectedLength = l ?? xs.length;
-    return Array.isArray(xs) && xs.length === expectedLength && xs.every(Number.isFinite);
-}
-
-function isStatisticsObject(statistic) {
-    let estimates = ['cl', 'lb', 'ub', 'se', 'point'];
-    return isNumericArray(statistic.bootstrap) && estimates.map(e => statistic.estimates[e]).every(Number.isFinite);
-}
-
 function loadBenchmark(benchmarkFile) {
     let blob = fs.readFileSync(benchmarkFile);
-    let {version, groupId, functionId, measurements, statistics} = JSON.parse(blob);
+    let pojo = JSON.parse(blob);
+    let {version} = pojo;
 
     if (version === undefined || Number(version) < JsonReport.VERSION) {
         console.error('[WARN] benchmark data in old format, skipping:', benchmarkFile)
@@ -126,52 +118,12 @@ function loadBenchmark(benchmarkFile) {
     }
 
     try {
-        return new Benchmark(groupId, functionId, measurements, statistics);
+        return Benchmark.parse(pojo);
     } catch (error) {
         console.error(`[WARN] couldn't create Benchmark instance, skipping: ${benchmarkFile} (${error.message})`);
-    }
-}
-
-class Benchmark {
-    constructor(groupId, functionId, measurements, statistics) {
-        if (typeof groupId !== 'string') {
-            throw new Error(`expected \`groupId\` to be 'string', was '${typeof groupId}'`);
+        if (process.env.CRITERION_DEBUG) {
+            console.error(error);
         }
-        if (typeof functionId !== 'string') {
-            throw new Error(`expected \`functionId\` to be 'string', was '${typeof functionId}'`);
-        }
-
-        this.title = `${groupId}/${functionId}`;
-        this.groupId = groupId;
-        this.functionId = functionId;
-
-        let {iters, times, averages, tukey} = measurements;
-        if (!isNumericArray(iters)) {
-            throw new Error('expected `measurements.iters` to be a numeric array');
-        }
-        if (!isNumericArray(times, iters.length)) {
-            throw new Error('expected `measurements.times` to be a numeric array');
-        }
-        if (!isNumericArray(averages, iters.length)) {
-            throw new Error('expected `measurements.averages` to be a numeric array');
-        }
-        if (!isNumericArray(tukey, 4)) {
-            throw new Error('expected `measurements.tukey` to be a numeric array');
-        }
-
-        let entries = Object.entries(statistics);
-        let knownStatistics = ['mean', 'median', 'medianAbsDev', 'slope', 'stdDev'];
-        if (entries.length !== 5 || !knownStatistics.every(k => knownStatistics.includes(k))) {
-            throw new Error('unexpected \`statistics\`')
-        }
-        for (let [k, v] of entries) {
-            if (!knownStatistics.includes(k) || !isStatisticsObject(v)) {
-                throw new Error(`unexpected \`statistics.${k}\``)
-            }
-        }
-
-        this.measurements = measurements;
-        this.statistics = statistics;
     }
 }
 
