@@ -7,7 +7,7 @@ import {Slope} from "./analysis.js";
 import {formatMeasurement, JsonReport} from "./report.js";
 import {GnuPlotter} from "./gnuplotter.js";
 
-function generatePlotsAndReport(benchmark, outputDirectory) {
+function generateBenchmarkReport(benchmark, outputDirectory) {
     let {measurements, statistics} = benchmark;
     let title = benchmark.id.title;
 
@@ -181,7 +181,7 @@ function writeReport(reportDir, template, context) {
     fs.writeFileSync(reportPath, report);
 }
 
-function writeFinalReport(outputDir, groups) {
+function generateFinalReport(outputDir, groups) {
     let reportDir = path.join(outputDir, "report");
     writeReport(reportDir, "index", {groups});
     console.log(`Wrote: ${reportDir}/index.html`);
@@ -236,7 +236,7 @@ function main() {
 
     let benchmarks = loadBenchmarks(outputDir);
     for (let benchmark of benchmarks) {
-        generatePlotsAndReport(benchmark, outputDir);
+        generateBenchmarkReport(benchmark, outputDir);
     }
 
     let groups = createPresentationGroups(benchmarks, outputDir);
@@ -244,7 +244,7 @@ function main() {
         generateGroupReport(group, outputDir);
     }
 
-    writeFinalReport(outputDir, groups);
+    generateFinalReport(outputDir, groups);
 }
 
 main();
