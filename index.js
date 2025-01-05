@@ -210,7 +210,7 @@ class BenchmarkGroup {
      * @param {BenchmarkTarget} f - The function to be benchmarked.
      * @param {...any} rest - Additional parameters for the benchmark function.
      */
-    bench(name, f, ...rest) {
+    async bench(name, f, ...rest) {
         let criterionEnv = process.env.CRITERION_ENV;
         let actualName = criterionEnv ? `${name} (${criterionEnv})` : name;
         let task = async () =>
@@ -219,7 +219,7 @@ class BenchmarkGroup {
                 () => blackbox(rest),
                 async (b, i) => await b.iter(f, ...i()),
             );
-        this.criterion.submit(task);
+        await this.criterion.submit(task);
     }
 }
 
@@ -331,7 +331,7 @@ export class Criterion {
         }
     }
 
-    submit(task) {
+    async submit(task) {
         return this.runTask(task);
     }
 }

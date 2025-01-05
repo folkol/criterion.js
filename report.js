@@ -46,7 +46,7 @@ export function formatShort(n) {
     } else if (n < 1000.0) {
         return n.toFixed(2);
     } else if (n < 10000.0) {
-        return n.toFixed(10);
+        return n.toFixed(1);
     } else {
         return n.toFixed(0);
     }
@@ -58,7 +58,7 @@ export function formatMeasurement(value) {
     return `${formatShort(values[0]).padEnd(6)} ${unit}`;
 }
 
-function formatTime(ns) {
+export function formatTime(ns) {
     if (ns < 1.0) {
         return `${formatShort(ns * 1e3)} ps`.padStart(6);
     } else if (ns < 10 ** 3) {

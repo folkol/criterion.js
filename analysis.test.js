@@ -1,6 +1,6 @@
 import {describe, it} from 'node:test';
 import assert from 'node:assert/strict';
-import {calculateEstimates, Data, dot, regression, Sample, tukey} from './analysis.js';
+import {calculateEstimates, common, Data, dot, regression, Sample, Slope, tukey} from './analysis.js';
 
 const CONFIG = {confidenceLevel: 0.95, nResamples: 100};
 
@@ -25,13 +25,14 @@ describe('calculateEstimates', () => {
 
 describe('dot', () => {
     it('should calculate dot product', () => {
-        assert.equal(dot([1, 2, 3], [4, 5, 6]), 32)
+        assert.equal(dot([1, 2, -3], [4, 5, -6]), 32)
     })
 })
 
 describe('regression', () => {
-    it('should calculate ', () => {
-        let [distribution, estimate] = regression(new Data(randomNumbers, randomNumbers.map(x => x * 2)), CONFIG);
+    it('should calculate slope estimates', () => {
+        let data = new Data(randomNumbers, randomNumbers.map(x => x * 2));
+        let [distribution, estimate] = regression(data, CONFIG);
         assert(distribution.numbers.every(x => x === 2))
         assert.equal(estimate.pointEstimate, 2)
         assert.equal(estimate.confidenceInterval.lowerBound, 2)
@@ -44,7 +45,7 @@ describe('Sample', () => {
         let sample = new Sample(randomNumbers);
         assert.equal(sample.numbers, randomNumbers)
     })
-    it('should calculate some statistics', () => {
+    it('can calculate some statistics', () => {
         let sample = new Sample(randomNumbers);
         assert(Math.abs(sample.mean() - 17.333) < 0.001)
         assert(Math.abs(sample.stdDev() - 15.780) < 0.001)
@@ -62,5 +63,15 @@ describe('Sample', () => {
         assert(distStdDev.numbers.every(x => x === 2))
         assert(distMedian.numbers.every(x => x === 3))
         assert(distMad.numbers.every(x => x === 4))
+    })
+})
+
+describe('Slope', () => {
+    it('can calculate the slope', () => {
+        assert.equal(Slope.fit([1, 2, 3, 4], [2, 4, 6, 8]), 2)
+    })
+    it('can determine how good the fit is', () => {
+        assert.equal(Slope.rSquared(2, [1, 2, 3, 4], [2, 4, 6, 8]), 1)
+        assert(Slope.rSquared(100, [1, 2, 3, 4], [2, 4, 6, 8]) < 0.001)
     })
 })

@@ -1,6 +1,6 @@
-function isNumericArray(xs, l) {
+export function isNumericArray(xs, l) {
     let expectedLength = l ?? xs.length;
-    return Array.isArray(xs) && xs.length === expectedLength && xs.every(Number.isFinite);
+    return Array.isArray(xs) && xs.length === expectedLength && xs.length > 0 && xs.every(Number.isFinite);
 }
 
 class Measurements {
