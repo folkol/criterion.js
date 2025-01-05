@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import {slugify} from "./index.js";
 import {renderTemplate} from "./templates.js";
 import {Slope} from "./analysis.js";
 import {formatMeasurement, JsonReport} from "./report.js";
 import {GnuPlotter} from "./gnuplotter.js";
 import {ReportData} from "./models.js";
+import {slugify} from "./utils.js";
 
 function generateBenchmarkReport(benchmark, outputDirectory) {
     console.log('generating plots and report for', benchmark.title);

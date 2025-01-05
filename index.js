@@ -1,5 +1,6 @@
 import * as Analysis from "./analysis.js";
 import {Reporter} from "./report.js";
+import {slugify} from "./utils.js";
 
 function blackbox(x) {
     globalThis.__criterionBlackboxSink = x;
@@ -40,10 +41,6 @@ class Bencher {
     }
 }
 
-export function slugify(s) {
-    return s.replaceAll(/\W/g, '_')
-}
-
 export class BenchmarkId {
     constructor(groupId, functionId, measurements, statistics) {
         if (typeof groupId !== 'string') {
@@ -58,7 +55,6 @@ export class BenchmarkId {
         this.groupId = groupId;
         this.functionId = functionId;
         this.title = `${groupId}/${functionId}`;
-        this.directoryName = `${slugify(groupId)}/${slugify(functionId)}`;
         this.measurements = measurements;
         this.statistics = statistics;
     }

@@ -1,6 +1,7 @@
 import {Slope} from "./analysis.js";
 import path from 'node:path';
 import fs from 'node:fs';
+import {slugify} from "./utils.js";
 
 export class Report {
     benchmarkStart(_id, _context) {
@@ -214,7 +215,7 @@ export class JsonReport extends Report {
     }
 
     measurementComplete(id, context, reportData) {
-        let where = path.join(context.outputDirectory, id.directoryName);
+        let where = path.join(context.outputDirectory, slugify(id.groupId), slugify(id.functionId));
         fs.mkdirSync(where, {recursive: true});
         let filePath = path.join(where, "benchmark.json");
 
