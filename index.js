@@ -203,7 +203,7 @@ class BenchmarkGroup {
     /**
      * Adds a new benchmark to the group and schedules it for execution.
      * @param {string} name - The name of the benchmark.
-     * @param {BenchmarkTarget} f - The function to be benchmarked.
+     * @param {function} f - The function to be benchmarked.
      * @param {...any} rest - Additional parameters for the benchmark function.
      */
     async bench(name, f, ...rest) {

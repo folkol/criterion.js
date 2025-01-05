@@ -1,6 +1,6 @@
 import {describe, it} from 'node:test';
 import assert from 'node:assert/strict';
-import {slugify} from "./utils.js";
+import {slugify} from "../utils.js";
 
 describe('slugify', () => {
     it('should replace weird stuff with underscores', () => {

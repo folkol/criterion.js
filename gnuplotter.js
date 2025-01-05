@@ -4,9 +4,10 @@ import path from "node:path";
 import child_process from "node:child_process";
 
 // https://gnuplot.sourceforge.net/docs_4.2/node75.html
-function gnuQuote(title) {
-    return title.replaceAll(/'/g, "''");
+export function gnuQuote(title) {
+    return title.replaceAll(/'/g, "’").replaceAll('\n', ' ');
 }
+
 
 export class GnuPlotter {
 
@@ -116,7 +117,7 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
         script += `${scaledHist} 0\n`;
         script += "e\n";
 
-        GnuPlotter.doPlot(script);
+        this.doPlot(script);
     }
 
     static pdfSmall(reportDir, iters, times) {
@@ -156,7 +157,7 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
         script += `${mean} 0\n`;
         script += "e\n";
 
-        GnuPlotter.doPlot(script);
+        this.doPlot(script);
     }
 
 
@@ -218,7 +219,7 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
         script += `${max_iters * x_scale} ${lb2} ${ub2}\n`;
         script += "e\n";
 
-        GnuPlotter.doPlot(script);
+        this.doPlot(script);
     }
 
 
@@ -281,7 +282,7 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
         script += `${max_iters * x_scale} ${lb2} ${ub2}\n`;
         script += "e\n";
 
-        GnuPlotter.doPlot(script);
+        this.doPlot(script);
     }
 
     static statistic(title, filename, statistic) {
@@ -353,7 +354,7 @@ plot '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Bootstrap distri
         script += `${point} ${y_point}\n`
         script += "e\n";
 
-        GnuPlotter.doPlot(script);
+        this.doPlot(script);
     }
 
     static violin(reportDir, benchmarks) {
@@ -391,7 +392,7 @@ plot '-' using 1:2 with lines lt 1 lw 2 lc rgb '#1f78b4' title 'Bootstrap distri
 
         let yTics = [];
         for (let i = 0; i < funcs.length; i++) {
-            yTics.push(`'${funcs[i]}' ${i + 0.5}`);
+            yTics.push(`'${gnuQuote(funcs[i])}' ${i + 0.5}`);
         }
 
         let script = `set output '${figurePath}'
@@ -419,7 +420,7 @@ ${plotCommand}\n`;
             script += 'e\n';
         }
 
-        GnuPlotter.doPlot(script);
+        this.doPlot(script);
     }
 
     static doPlot(script) {
@@ -481,7 +482,7 @@ function confidenceInterval(percentiles, confidenceLevel) {
     ];
 }
 
-class Kde {
+export class Kde {
     constructor(sample) {
         this.sample = sample;
         this.bandwidth = silverman(sample);

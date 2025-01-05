@@ -1,6 +1,6 @@
 import {describe, it} from 'node:test';
 import assert from 'node:assert/strict';
-import {scaleValues, formatShort, formatMeasurement, formatTime} from "./report.js";
+import {scaleValues, formatShort, formatMeasurement, formatTime} from "../report.js";
 
 describe('scaleValues', () => {
     it('should scale up really tiny numbers', () => {

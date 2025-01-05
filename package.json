@@ -6,7 +6,7 @@
   "homepage": "https://github.com/folkol/criterion.js/blob/master/README.md",
   "scripts": {
     "test": "node --test",
-    "integration-test": "node --test '*.integrationtest.js'",
+    "integration-test": "node --test '**/*.integrationtest.js'",
     "types": "tsc index.js --declaration --allowJs --emitDeclarationOnly"
   },
   "bin": {

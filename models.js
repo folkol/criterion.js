@@ -3,7 +3,7 @@ export function isNumericArray(xs, l) {
     return Array.isArray(xs) && xs.length === expectedLength && xs.length > 0 && xs.every(Number.isFinite);
 }
 
-class Measurements {
+export class Measurements {
     constructor(iters, times, tukey) {
         this.iters = iters;
         this.times = times;

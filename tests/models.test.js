@@ -1,6 +1,6 @@
 import {describe, it} from 'node:test';
 import assert from 'node:assert/strict';
-import {isNumericArray} from "./models.js";
+import {isNumericArray} from "../models.js";
 
 describe('isNumericArray', () => {
     it('should accept numeric array', () => {

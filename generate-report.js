@@ -190,7 +190,7 @@ function createPresentationGroups(benchmarks, outputDir) {
         .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function main() {
+export function main() {
     let outputDir = getOutputDirOrDie();
 
     let benchmarks = loadBenchmarks(outputDir);

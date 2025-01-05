@@ -1,6 +1,6 @@
 import {describe, it} from 'node:test';
 import assert from 'node:assert/strict';
-import {calculateEstimates, common, Data, dot, regression, Sample, Slope, tukey} from './analysis.js';
+import {calculateEstimates, common, Data, dot, regression, Sample, Slope, tukey} from '../analysis.js';
 
 const CONFIG = {confidenceLevel: 0.95, nResamples: 100};
 
