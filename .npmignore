@@ -1,0 +1,6 @@
+*.png
+tests
+criterion
+.idea
+*.svg
+examples
