@@ -46,6 +46,12 @@ describe('generate-report', () => {
             for (let f of expectedPlots) {
                 let plotPath = path.join(reportDir, f);
                 assert(fs.existsSync(plotPath), `expected to find ${plotPath}`)
+                let svg = fs.readFileSync(plotPath).toString();
+                assert(/<?xml version/.test(svg))
+                assert(/<svg/.test(svg))
+                assert(/<title>Gnuplot<\/title>/.test(svg))
+                let numbers = svg.match(/\d+/g);
+                assert(numbers.length > 1000)
             }
 
             let indexPath = path.join(reportDir, 'index.html');
