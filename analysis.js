@@ -329,7 +329,6 @@ export async function common(
         id,
         iters,
         times,
-        timeAverages,
         fences,
         estimates,
         distributions

@@ -15,7 +15,7 @@ export class GnuPlotter {
         let maxIters = iterCounts.reduce((acc, x) => Math.max(acc, x));
         let exponent = 3 * Math.floor(Math.log10(maxIters) / 3);
 
-        let scaledNumbers = Array.from(measurements.averages);
+        let scaledNumbers = measurements.times.map((x, i) => x / measurements.iters[i]);
         let typical = scaledNumbers.reduce((acc, x) => Math.max(acc, x));
         let unit = scaleValues(typical, scaledNumbers);
         let scaled_avg_times = new Sample(scaledNumbers);
@@ -119,8 +119,8 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
         GnuPlotter.doPlot(script);
     }
 
-    static pdfSmall(reportDir, avg_times) {
-        let scaled_numbers = [...avg_times];
+    static pdfSmall(reportDir, iters, times) {
+        let scaled_numbers = times.map((time, i) => time / iters[i]);
         let typical = scaled_numbers.reduce((acc, x) => Math.max(acc, x));
         let unit = scaleValues(typical, scaled_numbers);
         let scaled_avg_times = new Sample(scaled_numbers);
@@ -163,7 +163,7 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
     static regressionSmall(reportDir, measurements, statistics) {
         let [lb, ub] = confidenceInterval(
             new Sample(statistics.slope.bootstrap).percentiles(),
-            statistics.slope.cl,
+            statistics.slope.confidenceLevel,
         );
         let {xs, ys} = {xs: measurements.iters, ys: measurements.times};
         let [max_iters, typical] = [
@@ -225,7 +225,7 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
     static regression(title, reportDir, measurements, statistics) {
         let [lb, ub] = confidenceInterval(
             new Sample(statistics.slope.bootstrap).percentiles(),
-            statistics.slope.cl,
+            statistics.slope.confidenceLevel,
         );
         let {xs, ys} = {xs: measurements.iters, ys: measurements.times};
         let [max_iters, typical] = [
@@ -286,8 +286,8 @@ plot '-' using 1:2 with points lt 1 lc rgb '#1f78b4' pt 7 ps 0.5 title 'Sample',
 
     static statistic(title, filename, statistic) {
         let estimates = statistic.estimates;
-        let typical = estimates.ub;
-        let ci_values = [estimates.lb, estimates.ub, estimates.point];
+        let typical = estimates.upperBound;
+        let ci_values = [estimates.lowerBound, estimates.upperBound, estimates.pointEstimate];
 
         let unit = scaleValues(typical, ci_values);
         let [lb, ub, point] = [ci_values[0], ci_values[1], ci_values[2]];

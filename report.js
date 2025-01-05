@@ -120,9 +120,9 @@ export class CliReport extends Report {
 
         console.log(
             `${id.title.padEnd(23)} time:`,
-            `[${formatMeasurement(typicalEstimate.estimates.lb)}`,
-            formatMeasurement(typicalEstimate.estimates.point),
-            `${formatMeasurement(typicalEstimate.estimates.ub)}]`,
+            `[${formatMeasurement(typicalEstimate.estimates.lowerBound)}`,
+            formatMeasurement(typicalEstimate.estimates.pointEstimate),
+            `${formatMeasurement(typicalEstimate.estimates.upperBound)}]`,
         );
 
         if (reportData.throughput) {
@@ -134,8 +134,8 @@ export class CliReport extends Report {
         let slopeEstimate = reportData.statistics.slope.estimates;
 
         function formatShortEstimate(estimate) {
-            let lb = formatMeasurement(estimate.lb);
-            let ub = formatMeasurement(estimate.ub);
+            let lb = formatMeasurement(estimate.lowerBound);
+            let ub = formatMeasurement(estimate.upperBound);
             return `[${lb} ${ub}]`;
         }
 
@@ -144,12 +144,12 @@ export class CliReport extends Report {
             let xs = reportData.measurements.iters;
             let ys = reportData.measurements.times;
             let lb = Slope.rSquared(
-                slopeEstimate.lb,
+                slopeEstimate.lowerBound,
                 xs,
                 ys,
             ).toFixed(7);
             let ub = Slope.rSquared(
-                slopeEstimate.ub,
+                slopeEstimate.upperBound,
                 xs,
                 ys,
             ).toFixed(7);
@@ -207,7 +207,7 @@ export class CliReport extends Report {
 
 export class JsonReport extends Report {
 
-    static VERSION = 2;
+    static VERSION = 3;
 
     constructor() {
         super();

@@ -221,9 +221,9 @@ let templates = {
                         {{#each additionalStatistics}}
                             <tr>
                                 <td title="{{this.title}}">{{this.name}}</td>
-                                <td class="ci-bound">{{this.lower}}</td>
-                                <td>{{this.point}}</td>
-                                <td class="ci-bound">{{this.upper}}</td>
+                                <td class="ci-bound">{{this.lowerBound}}</td>
+                                <td>{{this.pointEstimate}}</td>
+                                <td class="ci-bound">{{this.upperBound}}</td>
                             </tr>
                         {{/each}}
                         </tbody>

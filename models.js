@@ -4,50 +4,56 @@ function isNumericArray(xs, l) {
 }
 
 class Measurements {
-    constructor(iters, times, averages, tukey) {
+    constructor(iters, times, tukey) {
         this.iters = iters;
         this.times = times;
-        this.averages = averages;
         this.tukey = tukey;
     }
 
+    get averages() {
+        return this.times.map((t, i) => t / this.iters[i])
+    }
+
     static parse(pojo) {
-        let {iters, times, averages, tukey} = pojo;
+        let {iters, times, tukey} = pojo;
 
         if (!isNumericArray(iters)) {
-            throw new TypeError('expected `measurements.iters` to be a numeric array');
+            throw new TypeError('expected `measurements.iters` to be a numeric array, was:' + JSON.stringify(tukey));
         }
         if (!isNumericArray(times, iters.length)) {
             throw new TypeError('expected `measurements.times` to be a numeric array');
         }
-        if (!isNumericArray(averages, iters.length)) {
-            throw new TypeError('expected `measurements.averages` to be a numeric array');
-        }
         if (!isNumericArray(tukey, 4)) {
-            throw new TypeError('expected `measurements.tukey` to be a numeric array');
+            throw new TypeError('expected `measurements.tukey` to be a numeric array, was:' + JSON.stringify(tukey));
         }
 
-        return new this(iters, times, averages, tukey)
+        return new this(iters, times, tukey)
     }
 }
 
 class Estimates {
-    constructor(cl, lb, ub, se, point) {
-        this.cl = cl;
-        this.lb = lb;
-        this.ub = ub;
-        this.se = se;
-        this.point = point;
+    constructor(confidenceLevel, lowerBound, upperBound, standardError, pointEstimate) {
+        this.confidenceLevel = confidenceLevel;
+        this.lowerBound = lowerBound;
+        this.upperBound = upperBound;
+        this.standardError = standardError;
+        this.pointEstimate = pointEstimate;
     }
 
     static parse(pojo) {
-        let {cl, lb, ub, se, point} = pojo;
-        for (let p of [cl, lb, ub, se, point]) {
+        let {
+            confidenceLevel,
+            lowerBound,
+            upperBound,
+            standardError,
+            pointEstimate
+        } = pojo;
+        for (let p of [confidenceLevel, lowerBound, upperBound, standardError, pointEstimate]) {
             if (!Number.isFinite(p)) {
                 throw new TypeError(`Expected '${p}' to be a number, was '${typeof p}'`)
             }
         }
-        return new this(cl, lb, ub, se, point);
+        return new this(confidenceLevel, lowerBound, upperBound, standardError, pointEstimate);
     }
 }
 
@@ -97,8 +103,9 @@ class Statistics {
             medianAbsDev,
             slope,
             stdDev
-        } = Object.fromEntries(Object.keys(estimates).map(statistic => [
-            statistic, new Statistic(new Estimates(
+        } = Object.fromEntries(Object.keys(estimates).map(statistic =>
+            [
+                statistic, new Statistic(new Estimates(
                     estimates[statistic].confidenceInterval.confidenceLevel,
                     estimates[statistic].confidenceInterval.lowerBound,
                     estimates[statistic].confidenceInterval.upperBound,
@@ -123,13 +130,13 @@ export class ReportData {
         return `${this.groupId}/${this.functionId}`;
     }
 
-    static build(id, iters, times, averages, tukey, estimates, distributions) {
+    static build(id, iters, times, tukey, estimates, distributions) {
         let groupId = id.groupId;
         let functionId = id.functionId;
         return new this(
             groupId,
             functionId,
-            new Measurements(iters, times, averages, tukey),
+            new Measurements(iters, times, tukey),
             Statistics.build(estimates, distributions)
         );
     }

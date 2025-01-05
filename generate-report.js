@@ -14,26 +14,26 @@ function generateBenchmarkReport(benchmark, outputDirectory) {
     fs.mkdirSync(reportDir, {recursive: true});
 
     let timeInterval = (est) => {
-        let {lb, point, ub} = est.estimates;
+        let {lowerBound, pointEstimate, upperBound} = est.estimates;
         return {
-            lower: formatMeasurement(lb),
-            point: formatMeasurement(point),
-            upper: formatMeasurement(ub),
+            lowerBound: formatMeasurement(lowerBound),
+            pointEstimate: formatMeasurement(pointEstimate),
+            upperBound: formatMeasurement(upperBound),
         }
     };
     let r2Interval = (est) => {
-        let {lb, point, ub} = est.estimates;
+        let {lowerBound, pointEstimate, upperBound} = est.estimates;
         let xs = benchmark.measurements.iters;
         let ys = benchmark.measurements.times;
         let format = x => Slope.rSquared(x, xs, ys).toFixed(7);
         return {
-            lower: format(lb),
-            point: format(point),
-            upper: format(ub),
+            lowerBound: format(lowerBound),
+            pointEstimate: format(pointEstimate),
+            upperBound: format(upperBound),
         };
     };
 
-    GnuPlotter.pdfSmall(reportDir, benchmark.measurements.averages);
+    GnuPlotter.pdfSmall(reportDir, benchmark.measurements.iters, benchmark.measurements.times);
     GnuPlotter.pdf(benchmark.title, reportDir, benchmark.measurements);
 
     GnuPlotter.regressionSmall(reportDir, benchmark.measurements, benchmark.statistics);
@@ -47,7 +47,7 @@ function generateBenchmarkReport(benchmark, outputDirectory) {
 
     let context = {
         title: benchmark.title,
-        confidence: benchmark.statistics.slope.estimates.cl.toFixed(2),
+        confidence: benchmark.statistics.slope.estimates.confidenceLevel.toFixed(2),
 
         additionalStatistics: [
             {name: "Mean", ...timeInterval(benchmark.statistics.mean)},
