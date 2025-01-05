@@ -7,7 +7,7 @@ Criterion.js is a micro-benchmarking tool (heavily!) inspired by [Criterion.rs](
 For each of your benchmarks, it does something like this:
 
 1. runs your benched function in a loop for some time in order to get the system up-to-speed (JIT compilation, various system caches, CPU P-states, etc.)
-2. runs your code a few times more in order to measure its performance (awaiting the result if the benched function is 'thenable')
+2. runs your code a few times more in order to measure its performance (awaiting the result **of each invocation** if the return value is 'thenable')
 3. calculates some statistics for these measurements
 4. (generates HTML report)
 

@@ -27,7 +27,7 @@ class Bencher {
         this.iterated = true;
         let start = performance.now();
         let sink = null;
-        if (typeof f.then === "function") {
+        if (typeof f(...input)?.then === "function") {
             for (let i = 0; i < this.iters; i++) {
                 sink = await f(...input);
             }
