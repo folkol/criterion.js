@@ -69,6 +69,7 @@ class BenchmarkTarget {
         let n = sampleCount;
         let met = warmupMeanExecutionTime;
 
+        // TODO: Allow for a gentler slope to better accommodate slow functions without resorting to 'flat' sampling.
         // Solve: [d + 2*d + 3*d + ... + n*d] * met = targetTime
         let totalRuns = (n * (n + 1)) / 2;
         let d = Math.max(1, Math.ceil(targetTime / met / totalRuns));

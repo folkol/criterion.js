@@ -6,7 +6,7 @@ bench('Hello Jasmine Async', async () => {})
 
 group('Fibonacci Jasmine', () => {
     bench('Iterative', fibonacciIterative, 15);
-    group('SubGroup?', () => {
+    group('SubGroup', () => {
         bench('Iterative Async', fibonacciAsync, 15);
         bench('Recursive', fibonacciRecursive, 15);
     })
