@@ -18,7 +18,7 @@ class Bencher {
 
     assertIterated() {
         if (!this.iterated) {
-            console.error("Benchmark function must call Bencher.iter.");
+            throw new Error('Benchmark function must call Bencher.iter');
         }
         this.iterated = false;
     }
@@ -60,22 +60,22 @@ export class BenchmarkId {
     }
 }
 
-class BenchmarkTarget {
+export class BenchmarkTarget {
     constructor(func) {
         this.func = func;
     }
 
-    iterationCounts(warmupMeanExecutionTime, sampleCount, targetTime) {
+    iterationCounts(warmupMeanExecutionTime, sampleCount, targetTime, slope = 1) {
         let n = sampleCount;
         let met = warmupMeanExecutionTime;
 
         // TODO: Allow for a gentler slope to better accommodate slow functions without resorting to 'flat' sampling.
         // Solve: [d + 2*d + 3*d + ... + n*d] * met = targetTime
-        let totalRuns = (n * (n + 1)) / 2;
-        let d = Math.max(1, Math.ceil(targetTime / met / totalRuns));
+        let totalRuns = slope * (n * (n + 1)) / 2;
+        let d = targetTime / met / totalRuns;
         let expectedNs = totalRuns * d * met;
 
-        if (d === 1) {
+        if (expectedNs > targetTime + 1e9) {
             let suggestedTime = Math.ceil(expectedNs / 1e9);
             console.error(
                 `Warning: Unable to complete ${n} samples in ${targetTime / 1e9}.`,
