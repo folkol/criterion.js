@@ -18,7 +18,7 @@ class Bencher {
 
     assertIterated() {
         if (!this.iterated) {
-            console.error("Benchmark function must call Bencher.iter.");
+            throw new Error('Benchmark function must call Bencher.iter');
         }
         this.iterated = false;
     }
