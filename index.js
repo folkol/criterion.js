@@ -71,11 +71,12 @@ export class BenchmarkTarget {
 
         // TODO: Allow for a gentler slope to better accommodate slow functions without resorting to 'flat' sampling.
         // Solve: [d + 2*d + 3*d + ... + n*d] * met = targetTime
-        let totalRuns = slope * (n * (n + 1)) / 2;
+        // let totalRuns = slope * (n * (n + 1)) / 2;
+        let totalRuns = n + n * n * slope / 2;
         let d = targetTime / met / totalRuns;
         let expectedNs = totalRuns * d * met;
 
-        if (expectedNs > targetTime + 1e9) {
+        if (d < 1) {
             let suggestedTime = Math.ceil(expectedNs / 1e9);
             console.error(
                 `Warning: Unable to complete ${n} samples in ${targetTime / 1e9}.`,
@@ -85,7 +86,7 @@ export class BenchmarkTarget {
 
         let iterations = [];
         for (let i = 1; i <= n; i++) {
-            iterations.push(i * d);
+            iterations.push(Math.ceil(d + d * i * slope));
         }
         return iterations;
     }
@@ -103,6 +104,7 @@ export class BenchmarkTarget {
             meanExecutionTime,
             n,
             config.measurementTime * 1e9,
+            config.slope,
         );
         let totalIters = iters.reduce((acc, x) => acc + x);
         let expectedNs = totalIters * meanExecutionTime;
@@ -271,6 +273,13 @@ class CriterionConfig {
     outputDirectory = "criterion";
 
     /**
+     * How fast the number of iterations per sample ramps up.
+     * @type {number}
+     * @default 1
+     */
+    slope = 1;
+
+    /**
      * Creates an instance of CriterionConfig.
      * Merges the provided options with the default configuration.
      * @param {Object} [opts] - An object containing custom configuration options.
@@ -279,6 +288,8 @@ class CriterionConfig {
      * @param {number} [opts.nResamples] - Custom number of resamples.
      * @param {number} [opts.sampleSize] - Custom sample size.
      * @param {number} [opts.warmUpTime] - Custom warm-up time in seconds.
+     * @param {string} [opts.outputDirectory] - Where to store the test results.
+     * @param {number} [opts.slope] - Custom ramp-up slope.
      */
     constructor(opts) {
         Object.assign(this, opts);
