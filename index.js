@@ -71,10 +71,14 @@ export class BenchmarkTarget {
 
         // TODO: Allow for a gentler slope to better accommodate slow functions without resorting to 'flat' sampling.
         // Solve: [d + 2*d + 3*d + ... + n*d] * met = targetTime
-        // let totalRuns = slope * (n * (n + 1)) / 2;
-        let totalRuns = n + n * n * slope / 2;
+        let totalRuns = slope * (n * (n + 1)) / 2;
+        // let totalRuns = (n * (n + 1)) / 2;
+        // let totalRuns = n + n * n * slope / 2;
+        // let d = Math.max(1, Math.floor(targetTime / met / totalRuns));
         let d = targetTime / met / totalRuns;
-        let expectedNs = totalRuns * d * met;
+        let expectedNs = totalRuns * Math.ceil(d) * met;
+
+        // console.log(`ITER COUNT: d=${d} totalRuns=${totalRuns} expectedNs=${expectedNs} met=${met} n=${n}`)
 
         if (d < 1) {
             let suggestedTime = Math.ceil(expectedNs / 1e9);
@@ -86,7 +90,7 @@ export class BenchmarkTarget {
 
         let iterations = [];
         for (let i = 1; i <= n; i++) {
-            iterations.push(Math.ceil(d + d * i * slope));
+            iterations.push(Math.round(d + d * i * slope));
         }
         return iterations;
     }

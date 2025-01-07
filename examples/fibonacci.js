@@ -5,11 +5,12 @@ let criterion = new Criterion({
     // measurementTime: 0.1,
     // nResamples: 10,
     // warmUpTime: 0.1,
+    slope: 0.1
 });
 
-let group = criterion.group('Default');
-group.bench('Hello', () => {})
-group.bench('Hello Async', async () => {})
+// let group = criterion.group('Default');
+// group.bench('Hello', () => {})
+// group.bench('Hello Async', async () => {})
 
 let fibonacci = criterion.group('Fibonacci');
 

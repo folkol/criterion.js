@@ -15,6 +15,7 @@ export class GnuPlotter {
         let iterCounts = measurements.iters;
         let maxIters = iterCounts.reduce((acc, x) => Math.max(acc, x));
         let exponent = 3 * Math.floor(Math.log10(maxIters) / 3);
+        let yScale = 10 ** -exponent;
 
         let scaledNumbers = measurements.times.map((x, i) => x / measurements.iters[i]);
         let typical = scaledNumbers.reduce((acc, x) => Math.max(acc, x));
@@ -23,11 +24,13 @@ export class GnuPlotter {
         let mean = scaled_avg_times.mean();
         let [xs, ys] = sweepAndEstimate(scaled_avg_times, null, mean);
 
+        let yLabel = exponent === 0 ? "Iterations" : `Iterations (x 10^${exponent})`;
+
         let figurePath = path.join(reportDir, "pdf.svg");
 
         let min_x = xs.reduce((acc, x) => Math.min(acc, x));
         let max_x = xs.reduce((acc, x) => Math.max(acc, x));
-        let max_y = ys.reduce((acc, y) => Math.max(acc, y)) * 1.1;
+        let max_y = maxIters * yScale;
 
         let script = `set output '${figurePath}'
 set title '${gnuQuote(title)}'
@@ -36,7 +39,7 @@ set xlabel 'Average time (${unit})'
 set xrange [${min_x}:${max_x}]
 show xrange
 set ytics nomirror
-set ylabel 'Iterations (x 10^${exponent})'
+set ylabel '${yLabel}'
 set yrange [0:${max_y}]
 set y2tics nomirror
 set key on outside top right Left reverse
@@ -70,7 +73,7 @@ plot '-' using 1:2:3 axes x1y2 with filledcurves fillstyle solid 0.25 noborder l
         for (let [n, x, y] of measurements.averages.map((x, i) => [
             x,
             scaled_avg_times.numbers[i],
-            ys[i]
+            measurements.iters[i] * yScale
         ])) {
             if (n < lost) {
                 severeOutliers.push([x, y]);
