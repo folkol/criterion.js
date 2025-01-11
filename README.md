@@ -93,6 +93,6 @@ Here is an example where 'something' happened during the test. My guess is that 
 
 ## TODO
 
-- More plots!
+- support flat sampling mode
 - Port more bench functions from Criterion.rs (Parameterized tests, tests of functions that consume their input, etc.)
 - Separate report generation into its own package?
